@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Builder</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont/dist/tabler-icons.min.css">
+    <style>
+/* ==========================================================================
+   PROMPT BUILDER — dark UI
+   Single coherent token system. Aliases for every variable name referenced
+   in markup/JS inline styles are mapped to real values so nothing falls back
+   to undefined.
+   ========================================================================== */
+:root {
+  /* Surfaces */
+  --color-bg-main:        #000000;
+  --color-bg-card:        #18181b;   /* gray cards */
+  --color-bg-secondary:   #1f1f23;   /* inputs, metrics, chips */
+  --color-bg-elevated:    #232328;
+
+  /* Borders */
+  --color-border-primary:   #3f3f46;
+  --color-border-secondary: #2a2a30;
+  --color-border-tertiary:  #232327;
+
+  /* Text */
+  --color-text-primary:   #f4f4f5;
+  --color-text-secondary: #a1a1aa;
+  --color-text-tertiary:  #6b6b74;
+
+  /* Accent */
+  --color-accent:         #8b83f0;
+  --color-accent-light:   #211f3a;
+  --color-accent-border:  #443e7e;
+
+  /* Badges */
+  --bg-badge-success: #0f2c24;  --text-badge-success: #6ee7c0;
+  --bg-badge-warning: #2e2206;  --text-badge-warning: #f5c463;
+  --bg-badge-pink:    #2e1320;  --text-badge-pink:    #f3aac6;
+  --bg-badge-blue:    #0c2138;  --text-badge-blue:    #8cc2f5;
+
+  /* Radii — both naming schemes used across the project */
+  --radius-sm: 6px;  --radius-md: 10px;  --radius-lg: 14px;
+  --border-radius-sm: 6px; --border-radius-md: 10px; --border-radius-lg: 14px;
+
+  /* Motion */
+  --transition-smooth: all 0.2s cubic-bezier(0.215, 0.610, 0.355, 1);
+  --transition-fast:   all 0.15s ease;
+
+  /* Type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-global: var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Aliases referenced by the original second stylesheet / JS inline styles */
+  --color-background-primary:   var(--color-bg-card);
+  --color-background-secondary: var(--color-bg-secondary);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { color-scheme: dark; }
+
+body {
+  background-color: var(--color-bg-main);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  min-height: 100vh;
+  padding: 0;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   ANIMATED BACKGROUND — slow drifting aurora over pure black
+   ========================================================================== */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  z-index: -2;
+  background:
+    radial-gradient(38vmax 38vmax at 18% 22%, rgba(120, 90, 240, 0.16), transparent 60%),
+    radial-gradient(34vmax 34vmax at 82% 30%, rgba(40, 130, 200, 0.13), transparent 60%),
+    radial-gradient(40vmax 40vmax at 50% 88%, rgba(180, 70, 150, 0.10), transparent 62%);
+  filter: blur(8px);
+  animation: vbDrift 26s ease-in-out infinite alternate;
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(120vmax 90vmax at 50% -10%, transparent 55%, rgba(0,0,0,0.55) 100%);
+  pointer-events: none;
+}
+@keyframes vbDrift {
+  0%   { transform: translate3d(0,0,0) scale(1);      }
+  50%  { transform: translate3d(2%, -2%, 0) scale(1.08); }
+  100% { transform: translate3d(-2%, 2%, 0) scale(1.04); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+}
+
+/* ==========================================================================
+   LAYOUT
+   ========================================================================== */
+.vb-wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 25px 25px 3rem;
+  columns: 430px;
+  column-gap: 20px;
+}
+/* Cards become masonry tiles; never split across a column */
+.vb-wrap > .vb-card { break-inside: avoid; -webkit-column-break-inside: avoid; }
+/* Full-width cards span every column */
+.vb-card--full { column-span: all; break-inside: avoid; }
+
+@media (max-width: 900px) {
+  .vb-wrap { columns: 1; padding: 18px 18px 2.5rem; }
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ==========================================================================
+   HEADER + MODE DROPDOWN
+   ========================================================================== */
+.vb-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 0;
+  margin-bottom: 0.75rem;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--color-border-tertiary);
+}
+.vb-header-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0.85rem 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.vb-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--color-text-primary);
+}
+.vb-brand i { font-size: 19px; color: var(--color-accent); }
+
+.vb-mode {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vb-mode > span {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+.vb-mode-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.vb-mode-select select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  padding: 9px 38px 9px 14px;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition-fast);
+}
+.vb-mode-select select:hover { border-color: var(--color-border-primary); }
+.vb-mode-select select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+.vb-mode-select::after {
+  content: "";
+  position: absolute;
+  right: 15px; top: 46%;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid var(--color-text-secondary);
+  border-bottom: 1.5px solid var(--color-text-secondary);
+  transform: translateY(-50%) rotate(45deg);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   CARDS
+   ========================================================================== */
+.vb-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  transition: var(--transition-smooth);
+}
+.vb-card:hover { border-color: var(--color-border-secondary); }
+
+.vb-st {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vb-st i { color: var(--color-text-secondary); }
+
+.vb-div {
+  border: none;
+  border-top: 1px solid var(--color-border-tertiary);
+  margin: 1.25rem 0;
+}
+
+.vb-grid2, .vb-grid3 { display: grid; gap: 12px; }
+.vb-grid2 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.vb-grid3 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+/* ==========================================================================
+   LABELS & TYPE
+   ========================================================================== */
+.vb-lbl {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+/* ==========================================================================
+   FORM ELEMENTS
+   ========================================================================== */
+.vb-fr { display: flex; flex-direction: column; gap: 6px; }
+.vb-fr label { font-size: 0.75rem; font-weight: 500; color: var(--color-text-secondary); }
+
+.vb-fr input[type="text"],
+.vb-fr textarea,
+.vb-fr select,
+.hk-line, .hk-cam-custom,
+.hk-turn select, .hk-turn input[type="text"] {
+  width: 100%;
+  font-size: 0.875rem;
+  font-family: inherit;
+  padding: 10px 13px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
+  outline: none;
+}
+.vb-fr textarea, .hk-line { resize: vertical; line-height: 1.55; }
+
+.vb-fr select, .hk-turn select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text-secondary) 50%),
+    linear-gradient(135deg, var(--color-text-secondary) 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 13px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+  cursor: pointer;
+}
+
+.vb-fr input:focus, .vb-fr textarea:focus, .vb-fr select:focus,
+.hk-line:focus, .hk-cam-custom:focus,
+.hk-turn select:focus, .hk-turn input[type="text"]:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+::placeholder { color: var(--color-text-tertiary); }
+
+/* Sliders */
+.vb-row { display: flex; align-items: center; gap: 14px; margin: 10px 0; }
+.vb-row label { font-size: 0.8125rem; color: var(--color-text-secondary); min-width: 112px; }
+.vb-row input[type="range"] {
+  flex: 1; appearance: none; -webkit-appearance: none;
+  height: 4px; border-radius: 2px;
+  background: var(--color-border-primary); outline: none;
+}
+.vb-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--color-accent); cursor: pointer; transition: var(--transition-fast);
+  border: 2px solid var(--color-bg-card);
+}
+.vb-row input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.vb-row input[type="range"]::-moz-range-thumb {
+  width: 15px; height: 15px; border-radius: 50%; background: var(--color-accent);
+  cursor: pointer; border: 2px solid var(--color-bg-card);
+}
+.vb-row .ro {
+  font-family: var(--font-mono); font-size: 0.8125rem; font-weight: 600;
+  min-width: 58px; text-align: right; color: var(--color-text-primary);
+}
+
+.vb-check {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.78rem; color: var(--color-text-secondary); margin-top: 12px; cursor: pointer;
+}
+.vb-check input { width: auto; accent-color: var(--color-accent); }
+
+/* ==========================================================================
+   CHIPS
+   ========================================================================== */
+.vb-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 2px; }
+.vb-chip {
+  font-size: 0.8125rem; font-weight: 500;
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid var(--color-border-secondary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer; transition: var(--transition-fast); user-select: none;
+}
+.vb-chip:hover { border-color: var(--color-border-primary); color: var(--color-text-primary); }
+.vb-chip.on-purple {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
+}
+
+/* ==========================================================================
+   BUTTONS — clean, minimal
+   ========================================================================== */
+.vb-send {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; font-size: 0.875rem; font-weight: 600; font-family: inherit;
+  padding: 13px; cursor: pointer;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  transition: var(--transition-fast);
+}
+.vb-send:hover { background: var(--color-bg-elevated); border-color: var(--color-text-tertiary); }
+.vb-send:active { transform: scale(0.99); }
+.vb-send.is-copied {
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+/* small ghost buttons (delete line, remove, etc.) inherit a quiet look */
+.hk-turn button {
+  font-size: 12px; padding: 7px 10px; cursor: pointer;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-secondary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  transition: var(--transition-fast);
+}
+.hk-turn button:hover { color: var(--color-text-primary); border-color: var(--color-border-primary); }
+
+/* ==========================================================================
+   METRICS, CLIPS, PREVIEWS
+   ========================================================================== */
+.vb-metric {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1rem; text-align: center;
+}
+.vb-metric .n { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); }
+.vb-metric .l { font-size: 0.72rem; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+.vb-clip {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 9px 0; border-top: 1px solid var(--color-border-tertiary);
+  font-size: 0.78rem; line-height: 1.55;
+}
+.vb-clip:first-child { border-top: none; }
+.vb-cnum {
+  flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  color: var(--text-badge-blue); background: var(--bg-badge-blue);
+  border-radius: 6px; padding: 2px 7px; min-width: 64px; text-align: center;
+}
+.vb-ctxt { color: var(--color-text-primary); }
+
+.vb-json, .vb-plain {
+  font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.6;
+  padding: 1rem 1.1rem; border-radius: var(--radius-md);
+  white-space: pre-wrap; word-break: break-word; margin-top: 10px;
+}
+.vb-json {
+  background: #0b0f0d;
+  border: 1px solid #18352c;
+  color: #7fe0bf;
+}
+.vb-plain {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-tertiary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.82rem; line-height: 1.65;
+}
+
+/* ==========================================================================
+   LOCK LISTS & BADGES
+   ========================================================================== */
+.vb-locklist {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 6px 16px; font-size: 0.75rem; color: var(--color-text-secondary); line-height: 1.5;
+}
+.vb-locklist span { display: flex; align-items: center; gap: 6px; }
+.vb-locklist i { font-size: 14px; color: var(--text-badge-success); flex-shrink: 0; }
+
+.vb-badge {
+  font-size: 0.6875rem; font-weight: 600; padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-badge-success); color: var(--text-badge-success);
+}
+.vb-badge.pink  { background: var(--bg-badge-pink);    color: var(--text-badge-pink); }
+.vb-badge.amber { background: var(--bg-badge-warning); color: var(--text-badge-warning); }
+.vb-badge.blue  { background: var(--bg-badge-blue);    color: var(--text-badge-blue); }
+
+/* ==========================================================================
+   HOOK TURNS
+   ========================================================================== */
+.hk-turn {
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--radius-md);
+  padding: 10px; margin-top: 8px;
+  background: var(--color-bg-secondary);
+}
+.hk-turn > div { display: flex; gap: 8px; align-items: center; }
+.hk-spk { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: var(--color-accent-light); color: var(--color-accent); }
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width: 560px) {
+  .vb-header { gap: 0.5rem; }
+  .vb-card { padding: 1.15rem; }
+  .vb-row label { min-width: 92px; }
+}
+
+/* ==========================================================================
+   COPY BUTTONS, PER-CLIP PREVIEWS, TOAST  (added)
+   ========================================================================== */
+.vb-mini {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; font-family: inherit;
+  padding: 5px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-secondary);
+  background: var(--color-bg-secondary); color: var(--color-text-secondary);
+  cursor: pointer; transition: var(--transition-fast); white-space: nowrap;
+}
+.vb-mini:hover { color: var(--color-text-primary); border-color: var(--color-border-primary); }
+.vb-mini.ok { color: var(--color-accent); border-color: var(--color-accent-border); background: var(--color-accent-light); }
+.vb-mini i { font-size: 13px; }
+
+.vb-prev { margin-top: 12px; }
+.vb-prev:first-child { margin-top: 0; }
+.vb-prev-head {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  color: var(--text-badge-blue); margin-bottom: 2px;
+}
+.vb-prev-head .vb-mini { margin-left: auto; }
+.vb-prev .vb-json, .vb-prev .vb-plain { margin-top: 4px; }
+
+.vb-toast {
+  position: fixed; left: 50%; bottom: 24px;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--color-bg-elevated); color: var(--color-text-primary);
+  border: 1px solid var(--color-border-primary); border-radius: var(--radius-md);
+  padding: 10px 16px; font-size: 0.8125rem; font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  opacity: 0; pointer-events: none; z-index: 50;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.vb-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-reduced-motion: reduce) { .vb-toast { transition: opacity .2s ease; } }
+
+/* ==========================================================================
+   PAGER, FOOTER, CAPPED PREVIEWS  (added)
+   ========================================================================== */
+.vb-pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.vb-pageinfo { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--color-text-secondary); }
+.vb-mini[disabled] { opacity: 0.4; cursor: not-allowed; }
+.vb-mini[disabled]:hover { color: var(--color-text-secondary); border-color: var(--color-border-secondary); }
+
+/* keep any single preview block from getting absurdly tall */
+.vb-json, .vb-plain { max-height: 380px; overflow: auto; }
+
+.vb-footer {
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  padding: 1.5rem 1rem 2.5rem;
+}
+
+/* ==========================================================================
+   HOOK TURN ROWS  (added)
+   ========================================================================== */
+.hk-turn-top { display: flex; gap: 8px; align-items: center; }
+.hk-turn-top .hk-speaker { flex: 0 0 128px; }
+.hk-turn-top .hk-cam { flex: 1; min-width: 0; }
+.hk-turn-top button { flex: 0 0 auto; }
+.hk-turn-meta { display: flex; gap: 8px; margin-top: 8px; }
+.hk-turn-meta select { flex: 1; min-width: 0; }
+
+</style>
+</head>
+<body>
+<h1 class="sr-only">Prompt Builder</h1>
+
+<header class="vb-header">
+  <div class="vb-header-inner">
+    <div class="vb-brand"><i class="ti ti-wand" aria-hidden="true"></i> Prompt Builder</div>
+    <div class="vb-mode">
+      <button class="vb-mini" onclick="vbReset()" title="Reset all settings"><i class="ti ti-rotate" aria-hidden="true"></i> Reset</button>
+      <span>Mode</span>
+      <div class="vb-mode-select">
+        <select id="modeSelect" aria-label="Mode" onchange="vbSetMode(this.value)">
+          <option value="script">Body Script</option>
+          <option value="single">Clip</option>
+          <option value="hook">Hook</option>
+          <option value="image">Image</option>
+          <option value="product">Product</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="vb-wrap">
+
+  <div class="vb-card vbm m-script m-single" id="charCard">
+    <div class="vb-st"><i class="ti ti-user-circle" style="font-size:18px" aria-hidden="true"></i> Character <span class="vb-badge">likeness locked to reference</span></div>
+    <div class="vb-fr"><label>Character</label><input type="text" id="character" value="60-year-old Jamaican elder" oninput="vbJsonUI()"></div>
+    <div class="vb-fr" style="margin-top:8px"><label>Image reference (locked)</label><input type="text" id="imgRef" value="USE PROVIDED IMAGE REFERENCE EXACTLY" oninput="vbJsonUI()"></div>
+  </div>
+
+  <div class="vb-card vbm m-script m-single" id="voiceCard">
+    <div class="vb-st"><i class="ti ti-microphone-2" style="font-size:18px" aria-hidden="true"></i> Voice <span class="vb-badge pink" id="vAccentBadge">accent locked · max</span></div>
+    <div class="vb-fr"><label>Accent</label><select id="vAccent" onchange="vbJsonUI()"></select></div>
+    <div class="vb-fr" id="vAccentCustomWrap" style="display:none;margin-top:8px"><label>Custom accent</label><input type="text" id="vAccentCustom" value="" placeholder="e.g. Trinidadian, Brooklyn New York, Lagos Nigerian…" oninput="vbJsonUI()"></div>
+    <div class="vb-row" style="margin-top:10px"><label>Accent strength</label><input type="range" id="vAccentPct" min="0" max="100" step="5" value="100" oninput="vbJsonUI()"><span class="ro" id="vAccentPctRo">100%</span></div>
+    <div class="vb-grid2" style="margin-top:8px">
+      <div class="vb-fr"><label>Speech speed</label><input type="text" id="vspeed" value="moderately fast" oninput="vbJsonUI()"></div>
+      <div class="vb-fr"><label>Pace</label><input type="text" id="vpace" value="natural conversational pace" oninput="vbJsonUI()"></div>
+    </div>
+    <div class="vb-grid2" style="margin-top:8px">
+      <div class="vb-fr"><label>Clarity</label><input type="text" id="vclarity" value="very clear and easy to understand" oninput="vbJsonUI()"></div>
+      <div class="vb-fr"><label>Tone</label><input type="text" id="vtone" value="friendly, confident, energetic, conversational" oninput="vbJsonUI()"></div>
+    </div>
+    <div class="vb-lbl" style="margin-top:12px">Accent lock (baked into every clip)</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-check" aria-hidden="true"></i><span id="vLockName">Accent locked</span></span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Accent priority above all else</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No drift, first word to last</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Never slips into another accent</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Clarity kept with the accent</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Native-speaker delivery</span>
+    </div>
+  </div>
+
+  <div class="vb-card vbm m-script" id="scriptCard">
+    <div class="vb-st"><i class="ti ti-file-text" style="font-size:18px" aria-hidden="true"></i> Body Script</div>
+    <div class="vb-fr"><textarea id="scriptText" rows="9" oninput="vbSeg()">Mi a go tell yuh sit'n weh change mi life. If yuh have bad breath, do dis one ting an watch how it work. No matter how much yuh brush or use mouthwash, if di smell keep comin back, yuh need dis formula. It natural, it safe, an it proven fi get rid a di odour. Yuh might not have bad breath right now, but one day yuh a go thank yuhself fi save dis. Tek 200 millilitre a warm water, add one teaspoon a baking soda, den squeeze half a lemon. Add one teaspoon a salt fi clean yuh tongue an gums good good. Stir it up an rinse yuh mouth fi 30 second. Nuh swallow it. Repeat morning an night fi fresh breath every day. Share dis wid somebody weh need it. Inna di next video mi a go show yuh wi herbal rinse weh keep yuh breath fresh fi 24 hour. Comment yes if yuh interested, an follow mi fi more natural tips.</textarea></div>
+    <div class="vb-div"></div>
+    <div class="vb-lbl">Clip pacing</div>
+    <div class="vb-row"><label>Seconds per clip</label><input type="range" id="secs" min="4" max="8" step="1" value="8" oninput="vbSeg()"><span class="ro" id="secsRo">8s</span></div>
+    <div class="vb-row"><label>Speaking pace</label><input type="range" id="pace" min="2" max="3.5" step="0.1" value="2.7" oninput="vbSeg()"><span class="ro" id="paceRo">2.7 w/s</span></div>
+    <div class="vb-grid3" style="margin-top:12px">
+      <div class="vb-metric"><div class="n" id="mClips">–</div><div class="l">clips</div></div>
+      <div class="vb-metric"><div class="n" id="mDur">–</div><div class="l">est. total</div></div>
+      <div class="vb-metric"><div class="n" id="mWords">–</div><div class="l">words</div></div>
+    </div>
+    <div class="vb-lbl" style="margin-top:16px">Rough cut preview <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px">(re-cut on natural beats when finalizing)</span></div>
+    <div id="clipPreview" style="margin-top:4px"></div>
+  </div>
+
+  <div class="vb-card vbm m-single" id="singleCard">
+    <div class="vb-st"><i class="ti ti-microphone" style="font-size:18px" aria-hidden="true"></i> Clip</div>
+    <div class="vb-fr"><label>Dialogue for this clip</label><textarea id="scriptOne" rows="3" placeholder="One line of dialogue for a single clip..."></textarea></div>
+  </div>
+
+  <div class="vb-card vbm m-hook" id="hookCard">
+    <div class="vb-st"><i class="ti ti-users" style="font-size:18px" aria-hidden="true"></i> Speakers <span class="vb-badge blue">two-person dialogue · per-line accent &amp; camera</span></div>
+
+    <div class="vb-lbl">Person A</div>
+    <div class="vb-grid2">
+      <div class="vb-fr"><label>Label</label><input type="text" id="hkNameA" value="Person A" oninput="vbHookUI()"></div>
+      <div class="vb-fr"><label>Accent</label><select id="hkAccentA" onchange="vbHookUI()"></select></div>
+    </div>
+    <div class="vb-fr" id="hkAccentACustomWrap" style="display:none;margin-top:8px"><label>Custom accent (Person A)</label><input type="text" id="hkAccentACustom" value="" placeholder="e.g. Trinidadian, Brooklyn New York, Lagos Nigerian…" oninput="vbHookUI()"></div>
+    <div class="vb-fr" style="margin-top:8px"><label>Character (Person A)</label><input type="text" id="hkCharA" value="60-year-old Jamaican elder" oninput="vbHookUI()"></div>
+    <div class="vb-row" style="margin-top:8px"><label>Accent strength</label><input type="range" id="hkPctA" min="0" max="100" step="5" value="100" oninput="vbHookUI()"><span class="ro" id="hkPctARo">100%</span></div>
+    <div class="vb-fr" style="margin-top:4px"><label>Reference (Person A)</label><input type="text" id="hkRefA" value="USE PERSON A REFERENCE IMAGE EXACTLY" oninput="vbHookUI()"></div>
+
+    <div class="vb-div"></div>
+    <div class="vb-lbl">Person B</div>
+    <div class="vb-grid2">
+      <div class="vb-fr"><label>Label</label><input type="text" id="hkNameB" value="Person B" oninput="vbHookUI()"></div>
+      <div class="vb-fr"><label>Accent</label><select id="hkAccentB" onchange="vbHookUI()"></select></div>
+    </div>
+    <div class="vb-fr" id="hkAccentBCustomWrap" style="display:none;margin-top:8px"><label>Custom accent (Person B)</label><input type="text" id="hkAccentBCustom" value="" placeholder="e.g. Southern US, London Cockney, Indian…" oninput="vbHookUI()"></div>
+    <div class="vb-fr" style="margin-top:8px"><label>Character (Person B)</label><input type="text" id="hkCharB" value="man in his early 30s" oninput="vbHookUI()"></div>
+    <div class="vb-row" style="margin-top:8px"><label>Accent strength</label><input type="range" id="hkPctB" min="0" max="100" step="5" value="100" oninput="vbHookUI()"><span class="ro" id="hkPctBRo">100%</span></div>
+    <div class="vb-fr" style="margin-top:4px"><label>Reference (Person B)</label><input type="text" id="hkRefB" value="USE PERSON B REFERENCE IMAGE EXACTLY" oninput="vbHookUI()"></div>
+  </div>
+
+  <div class="vb-card vbm m-hook">
+    <div class="vb-st"><i class="ti ti-messages" style="font-size:18px" aria-hidden="true"></i> Dialogue <span class="vb-badge blue">per-line speaker, camera &amp; text</span></div>
+    <div class="vb-lbl">Lines <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px">— each line gets a speaker, a camera shot, and the spoken text</span></div>
+    <div id="hkTurns"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="vb-send" style="margin-top:0;flex:1" onclick="vbHookAddTurn('A')"><i class="ti ti-plus" style="font-size:14px" aria-hidden="true"></i> Line for A</button>
+      <button class="vb-send" style="margin-top:0;flex:1" onclick="vbHookAddTurn('B')"><i class="ti ti-plus" style="font-size:14px" aria-hidden="true"></i> Line for B</button>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:16px">Camera options available per line</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-point" aria-hidden="true"></i>Focus on the speaker</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Close-up on the speaker</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Medium shot on the speaker</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Over-the-shoulder toward speaker</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Reaction shot on the listener</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Two-shot (both in frame)</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Wide establishing shot</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Custom camera shot</span>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">Locked guarantees (per clip)</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-check" aria-hidden="true"></i>Each speaker's accent stays locked</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Only the active speaker talks</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Listener reacts naturally, silent</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Exact likeness from reference</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Reference background preserved</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>One continuous shot per clip</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No move within a clip; cut to switch</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No captions / on-screen text</span>
+    </div>
+
+    <div class="vb-st" style="margin-top:16px"><i class="ti ti-code" style="font-size:18px" aria-hidden="true"></i> JSON clips preview <span class="vb-badge">per clip</span><button class="vb-mini" style="margin-left:auto" onclick="vbCopyAllHook(this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy all</button></div>
+    <div id="hkJsonOut"></div>
+  </div>
+
+  <div class="vb-card vbm m-image" id="imageCard">
+    <div class="vb-st"><i class="ti ti-photo" style="font-size:18px" aria-hidden="true"></i> Image <span class="vb-badge blue">identity locked · scene · company builder</span></div>
+
+    <div class="vb-lbl">Reference &amp; render controls</div>
+    <div class="vb-row"><label>Reference strength</label><input type="range" id="imgStrength" min="0.6" max="1" step="0.01" value="0.95" oninput="vbImgUI()"><span class="ro" id="imgStrengthRo">0.95</span></div>
+    <div class="vb-row"><label>Guidance scale</label><input type="range" id="imgGuid" min="1" max="15" step="0.5" value="9" oninput="vbImgUI()"><span class="ro" id="imgGuidRo">9</span></div>
+    <div class="vb-row"><label>Steps</label><input type="range" id="imgSteps" min="20" max="60" step="1" value="50" oninput="vbImgUI()"><span class="ro" id="imgStepsRo">50</span></div>
+
+
+  </div>
+
+  <div class="vb-card vbm m-image">
+    <div class="vb-st"><i class="ti ti-mountain" style="font-size:18px" aria-hidden="true"></i> Scene</div>
+    <div class="vb-lbl">Background</div>
+    <div class="vb-fr"><select id="imgBg" onchange="vbBgToggle();vbImgUI()">
+      <option>Random (from pool)</option>
+      <option>Modern kitchen</option>
+      <option>Living room</option>
+      <option>Porch</option>
+      <option>Backyard</option>
+      <option>Beach house</option>
+      <option>Office</option>
+      <option>City street</option>
+      <option>Suburban home</option>
+      <option>Recording studio</option>
+      <option>Luxury apartment</option>
+      <option>Countryside home</option>
+      <option>Rooftop terrace</option>
+      <option>Café</option>
+      <option>Park</option>
+      <option>Community center</option>
+      <option>Cozy bedroom</option><option>Dining room</option><option>Home gym</option><option>Garage</option><option>Bathroom vanity</option><option>Walk-in closet</option><option>Sunlit kitchen</option><option>Rustic farmhouse kitchen</option><option>Industrial loft</option><option>Minimalist studio apartment</option><option>Living room with fireplace</option><option>Bookstore</option><option>Public library</option><option>Coffee roastery</option><option>Restaurant interior</option><option>Fine-dining restaurant</option><option>Bar</option><option>Pub</option><option>Cocktail lounge</option><option>Nightclub</option><option>Hotel lobby</option><option>Hotel room</option><option>Spa</option><option>Barbershop</option><option>Hair salon</option><option>Nail salon</option><option>Clothing boutique</option><option>Grocery store</option><option>Supermarket aisle</option><option>Pharmacy</option><option>Farmers market</option><option>Shopping mall</option><option>Bakery</option><option>Florist shop</option><option>Pet store</option><option>Art studio</option><option>Music studio booth</option><option>Podcast studio</option><option>Conference room</option><option>Coworking space</option><option>Classroom</option><option>University lecture hall</option><option>Doctor's office</option><option>Dental clinic</option><option>Hospital room</option><option>Science laboratory</option><option>TV studio set</option><option>Green screen studio</option><option>White cyclorama studio</option><option>Black studio backdrop</option><option>Greenhouse</option><option>Vegetable garden</option><option>Flower garden</option><option>Vineyard</option><option>Orchard</option><option>Farm field</option><option>Barn</option><option>Ranch stable</option><option>Forest trail</option><option>Mountain overlook</option><option>Desert landscape</option><option>Snowy landscape</option><option>Lakeside dock</option><option>Riverbank</option><option>Waterfall</option><option>Tropical beach</option><option>Beach boardwalk</option><option>Poolside</option><option>Yacht deck</option><option>Sailboat</option><option>Marina</option><option>Cliffside coast</option><option>City skyline at night</option><option>European old town street</option><option>Cobblestone alley</option><option>Parisian cafe terrace</option><option>Tokyo street at night</option><option>Street food market</option><option>Gas station</option><option>Subway platform</option><option>Train interior</option><option>Airport terminal</option><option>Airplane cabin</option><option>Car interior</option><option>Bus interior</option><option>Stadium</option><option>Boxing gym</option><option>Yoga studio</option><option>Dance studio</option><option>Basketball court</option><option>Soccer field</option><option>Tennis court</option><option>Golf course</option><option>Ski lodge</option><option>Campsite</option><option>Cabin in the woods</option><option>Penthouse balcony</option><option>Infinity pool villa</option><option>Wine cellar</option><option>Art gallery</option><option>Museum hall</option><option>Theater stage</option><option>Church interior</option><option>Temple</option><option>Garden gazebo</option><option>Backyard BBQ</option><option>Patio dining</option><option>Wedding venue</option><option>Construction site</option><option>Auto repair shop</option><option>Warehouse</option><option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="imgBgCustomWrap" style="display:none;margin-top:8px"><label>Custom background (anything)</label><input type="text" id="imgBgCustom" value="" placeholder="e.g. cozy bookstore, mountain trail, jazz club, market stall…" oninput="vbImgUI()"></div>
+
+    <div class="vb-lbl" style="margin-top:14px">Wardrobe</div>
+    <div class="vb-fr"><select id="imgWardrobe" onchange="vbWardrobeToggle();vbImgUI()">
+      <option>Keep reference outfit</option>
+      <option>Casual everyday wear</option>
+      <option>Smart-casual outfit</option>
+      <option>Business attire</option>
+      <option>Formal tailored suit</option>
+      <option>Light summer clothing</option>
+      <option>Athleisure activewear</option>
+      <option>Traditional cultural attire</option>
+      <option>Cozy loungewear</option>
+      <option>Modern streetwear</option>
+      <option>Medical white coat</option>
+      <option>Chef's white uniform</option>
+      <option>Rustic farmer's workwear</option>
+      <option>Denim jacket and white tee</option><option>Hoodie and jeans</option><option>Leather jacket and jeans</option><option>Bomber jacket</option><option>Trench coat</option><option>Wool overcoat</option><option>Winter parka</option><option>Puffer jacket</option><option>Three-piece suit</option><option>Tuxedo</option><option>Cocktail dress</option><option>Evening gown</option><option>Sundress</option><option>Maxi dress</option><option>Blouse and skirt</option><option>Turtleneck sweater</option><option>Cardigan and slacks</option><option>Polo shirt and chinos</option><option>Henley shirt and jeans</option><option>Flannel shirt</option><option>Tank top and shorts</option><option>Gym tank and leggings</option><option>Running gear</option><option>Yoga outfit</option><option>Tracksuit</option><option>Basketball jersey</option><option>Football jersey</option><option>Soccer kit</option><option>Cycling kit</option><option>Swimwear</option><option>Bathrobe</option><option>Pajamas</option><option>Nurse scrubs</option><option>Surgeon scrubs</option><option>Police uniform</option><option>Firefighter gear</option><option>Military uniform</option><option>Pilot uniform</option><option>Flight attendant uniform</option><option>Hi-vis construction gear</option><option>Mechanic coveralls</option><option>Barista apron</option><option>Waiter uniform</option><option>Barber apron</option><option>Business-casual blazer</option><option>Power suit</option><option>Pencil skirt and blazer</option><option>Sari</option><option>Kimono</option><option>Hanbok</option><option>Dashiki</option><option>Kente attire</option><option>Abaya</option><option>Thobe</option><option>Kaftan</option><option>Western cowboy wear</option><option>Biker leathers</option><option>Hip-hop streetwear</option><option>Vintage 70s outfit</option><option>80s retro outfit</option><option>90s grunge</option><option>Preppy outfit</option><option>Linen beachwear</option><option>Raincoat and boots</option><option>Ski jacket and pants</option><option>Hiking gear</option><option>Safari outfit</option><option>Graduation gown</option><option>Wedding dress</option><option>Groom suit</option><option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="imgWardrobeCustomWrap" style="display:none;margin-top:8px"><label>Custom wardrobe (anything)</label><input type="text" id="imgWardrobeCustom" value="" placeholder="e.g. denim jacket and white tee, traditional kente, navy scrubs…" oninput="vbImgUI()"></div>
+
+
+  </div>
+
+  <div class="vb-card vbm m-image">
+    <div class="vb-st"><i class="ti ti-camera" style="font-size:18px" aria-hidden="true"></i> Framing</div>
+    <div class="vb-lbl">Camera shot &amp; pose</div>
+    <div class="vb-grid2">
+      <div class="vb-fr"><label>Shot / angle</label><select id="imgShot" onchange="vbShotToggle();vbImgUI()">
+        <option>Medium close-up</option>
+        <option>Close-up</option>
+        <option>Extreme close-up</option>
+        <option>Portrait headshot</option>
+        <option>Medium shot</option>
+        <option>Medium-wide shot</option>
+        <option>Wide shot</option>
+        <option>Full-body shot</option>
+        <option>Over-the-shoulder shot</option>
+        <option>Low-angle shot</option>
+        <option>High-angle shot</option>
+        <option>Eye-level shot</option>
+        <option>Three-quarter view</option>
+        <option>Profile shot</option>
+        <option>Custom…</option>
+      </select></div>
+      <div class="vb-fr"><label>Pose / position</label><select id="imgPose" onchange="vbPoseToggle();vbImgUI()">
+        <option>Standing</option>
+        <option>Sitting</option>
+        <option>Riding</option>
+        <option>Walking</option>
+        <option>Leaning casually</option>
+        <option>Kneeling</option>
+        <option>Crouching</option>
+        <option>Lying down</option>
+        <option>Standing, arms crossed</option>
+        <option>Standing, hands in pockets</option>
+        <option>Gesturing while speaking</option>
+        <option>Custom…</option>
+      </select></div>
+    </div>
+    <div class="vb-fr" id="imgShotCustomWrap" style="display:none;margin-top:8px"><label>Custom shot / angle</label><input type="text" id="imgShotCustom" value="" placeholder="e.g. dutch-angle waist-up, top-down flat lay, worm's-eye view…" oninput="vbImgUI()"></div>
+    <div class="vb-fr" id="imgPoseCustomWrap" style="display:none;margin-top:8px"><label>Custom pose / position</label><input type="text" id="imgPoseCustom" value="" placeholder="e.g. riding a bicycle, sitting on a porch step, mid-stride…" oninput="vbImgUI()"></div>
+
+    <div class="vb-lbl" style="margin-top:14px">Activity</div>
+    <div class="vb-fr"><select id="imgActivity" onchange="vbActivityToggle();vbImgUI()">
+      <option>None / just posing</option>
+      <option>Cooking</option>
+      <option>Eating a meal</option>
+      <option>Talking to the camera</option>
+      <option>Working at a desk</option>
+      <option>Exercising</option>
+      <option>Gardening</option>
+      <option>Shopping</option>
+      <option>Reading</option>
+      <option>Holding a product</option>
+      <option>Drinking coffee</option>
+      <option>Brewing coffee</option><option>Making a smoothie</option><option>Mixing a drink</option><option>Baking</option><option>Chopping vegetables</option><option>Washing dishes</option><option>Cleaning the house</option><option>Doing laundry</option><option>Setting the table</option><option>Pouring a drink</option><option>Tasting food</option><option>Grilling / BBQ</option><option>Meal prepping</option><option>Stretching</option><option>Doing yoga</option><option>Lifting weights</option><option>Running on a treadmill</option><option>Jogging outdoors</option><option>Cycling</option><option>Shadow boxing</option><option>Dancing</option><option>Jumping rope</option><option>Playing guitar</option><option>Playing piano</option><option>Singing into a mic</option><option>Recording a podcast</option><option>Filming a selfie video</option><option>Taking a selfie</option><option>Live streaming</option><option>Video call</option><option>Talking on the phone</option><option>Texting on phone</option><option>Typing on a laptop</option><option>Writing in a notebook</option><option>Sketching</option><option>Painting</option><option>Studying</option><option>Giving a presentation</option><option>Pointing at a chart</option><option>Counting money</option><option>Unboxing a package</option><option>Demonstrating a product</option><option>Applying skincare</option><option>Doing makeup</option><option>Brushing teeth</option><option>Styling hair</option><option>Shaving</option><option>Watering plants</option><option>Planting seeds</option><option>Harvesting vegetables</option><option>Walking a dog</option><option>Petting a cat</option><option>Feeding a pet</option><option>Holding a baby</option><option>Playing with kids</option><option>Carrying groceries</option><option>Browsing a store</option><option>Trying on clothes</option><option>Paying at a counter</option><option>Driving a car</option><option>Riding a bike</option><option>Relaxing on a couch</option><option>Sipping tea</option><option>Toasting with a glass</option><option>Laughing with friends</option><option>Meditating</option><option>Fishing</option><option>Hiking</option><option>Camping</option><option>Swimming</option><option>Sunbathing</option><option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="imgActivityCustomWrap" style="display:none;margin-top:8px"><label>Custom activity</label><input type="text" id="imgActivityCustom" value="" placeholder="e.g. mixing a herbal drink, watering plants, packing boxes…" oninput="vbImgUI()"></div>
+
+
+  </div>
+
+  <div class="vb-card vbm m-image">
+    <div class="vb-st"><i class="ti ti-users" style="font-size:18px" aria-hidden="true"></i> Companions</div>
+    <div class="vb-lbl">Companions <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px">— tap to combine any (none = alone)</span></div>
+    <div class="vb-chips" id="imgCompChips">
+      <div class="vb-chip" data-c="child" onclick="vbCompChip(this)">A child</div>
+      <div class="vb-chip" data-c="elderly person" onclick="vbCompChip(this)">An elderly person</div>
+      <div class="vb-chip" data-c="young man" onclick="vbCompChip(this)">A young man</div>
+      <div class="vb-chip" data-c="young woman" onclick="vbCompChip(this)">A young woman</div>
+      <div class="vb-chip" data-c="twin" onclick="vbCompChip(this)">A twin (50%)</div>
+      <div class="vb-chip" data-c="interviewer" onclick="vbCompChip(this)">Interviewer</div>
+      <div class="vb-chip" data-c="interviewer boom" onclick="vbCompChip(this)">Interviewer + boom mic</div>
+      <div class="vb-chip" data-c="custom" onclick="vbCompChip(this)">Custom…</div>
+    </div>
+    <div id="imgTwinWrap" style="display:none;margin-top:10px">
+      <div class="vb-row"><label>Twin age gap</label><input type="range" id="imgTwinGap" min="0" max="40" step="1" value="20" oninput="vbImgUI()"><span class="ro" id="imgTwinGapRo">20 yrs</span></div>
+      <div class="vb-fr"><label>Twin is</label><select id="imgTwinDir" onchange="vbImgUI()"><option>younger</option><option>older</option></select></div>
+    </div>
+    <div class="vb-fr" id="imgCompanionCustomWrap" style="display:none;margin-top:10px"><label>Custom companion</label><input type="text" id="imgCompanionCustom" value="" placeholder="e.g. two grandchildren, a small dog, a business partner…" oninput="vbImgUI()"></div>
+
+
+  </div>
+
+  <div class="vb-card vbm m-image">
+    <div class="vb-st"><i class="ti ti-adjustments" style="font-size:18px" aria-hidden="true"></i> Output</div>
+    <div class="vb-grid2">
+      <div class="vb-fr"><label>Camera simulation</label><input type="text" id="imgCam" value="iPhone 17 Pro" oninput="vbImgUI()"></div>
+      <div class="vb-fr"><label>Aspect ratio</label><select id="imgAspect" onchange="vbImgUI()"><option>9:16</option><option>16:9</option><option>1:1</option><option>4:5</option><option>3:4</option></select></div>
+    </div>
+    <label class="vb-check"><input type="checkbox" id="imgFlag" checked onchange="vbImgUI()">Require a visible United States flag in every image</label>
+
+    <div class="vb-lbl" style="margin-top:14px">Locked guarantees</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-check" aria-hidden="true"></i>Max likeness — face, hair, body, skin</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Photoreal, reads as a real photo</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Authentic skin texture, natural flaws</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Accurate lighting &amp; natural shadows</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Premium smartphone photography look</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Not AI artwork / no cartoon / no CGI</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Negative prompt strips deformities</span>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">Pool used when “Random” is selected</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-point" aria-hidden="true"></i>Kitchen · living room · porch</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Backyard · beach house · office</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>City street · suburban · studio</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Apartment · countryside · rooftop</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Café · park · community center</span>
+    </div>
+
+    <div class="vb-st" style="margin-top:16px"><i class="ti ti-code" style="font-size:18px" aria-hidden="true"></i> JSON spec preview<button class="vb-mini" style="margin-left:auto" onclick="vbCopyId('imgJsonPreview',this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button></div>
+    <div class="vb-json" id="imgJsonPreview">—</div>
+  </div>
+
+  <!-- ============ NEW: PRODUCT HOLD (PLAIN TEXT) ============ -->
+  <div class="vb-card vbm m-product" id="productCard">
+    <div class="vb-st"><i class="ti ti-package" style="font-size:18px" aria-hidden="true"></i> Product <span class="vb-badge amber">plain-text image prompt</span></div>
+    <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:4px">Pick a product, refine the description, then copy a single <strong>plain-text</strong> prompt (no JSON) of your locked-identity subject holding it.</div>
+
+    <div class="vb-lbl" style="margin-top:16px">Product</div>
+    <div class="vb-chips" id="pdProductChips">
+      <div class="vb-chip on-purple" data-k="crwn" onclick="vbPdPreset('crwn',this)">CRWN Cocoa</div>
+      <div class="vb-chip" data-k="serene" onclick="vbPdPreset('serene',this)">Serene Herbs</div>
+      <div class="vb-chip" data-k="iron" onclick="vbPdPreset('iron',this)">Ironpaws</div>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">Subject reference note (identity locked)</div>
+    <div class="vb-fr"><input type="text" id="pdRef" value="USE THE PROVIDED REFERENCE IMAGE EXACTLY" oninput="vbProductUI()"></div>
+
+    <div class="vb-lbl" style="margin-top:14px">Product description (held in frame)</div>
+    <div class="vb-fr"><textarea id="pdProduct" rows="6" oninput="vbProductUI()">a matte black resealable stand-up foil pouch of CRWN Cocoa with a press-to-close zip top and a flat-bottom gusset; across the upper-middle a wide brushed gold-to-bronze metallic gradient band; on that band the lowercase black wordmark "crwn." with a small black crown resting on top of it, and to its right a small black circular "PREMIUM QUALITY" seal with a star/molecule emblem; below the band on the black body the gold headline "HIGH FLAVANOL COCOA"; a thin gold-outlined bar reading "FLAVANOLS & FLAVANOIDS"; a row of three white line icons with labels beneath them — a double up-chevron "NITRIC OXIDE", a running figure "CARDIO PERFORMANCE", and a heartbeat heart "HEART HEALTH"; a solid gold rounded bar reading "0 SUGAR | 20 CALORIES" in black; and near the bottom in white "30 SERVINGS | DIETARY SUPPLEMENT"; premium black-and-gold supplement design with a matte finish</textarea></div>
+    <label class="vb-check"><input type="checkbox" id="pdLabelSharp" checked onchange="vbProductUI()">Keep the product label sharp, accurate and legible</label>
+    <label class="vb-check"><input type="checkbox" id="pdFrontFacing" checked onchange="vbProductUI()">Product front faces the camera</label>
+
+    <div class="vb-lbl" style="margin-top:14px">How it's held</div>
+    <div class="vb-fr"><select id="pdHold" onchange="vbProductUI()">
+      <option>holding it up toward the camera at chest height</option>
+      <option>cradling it in both hands</option>
+      <option>presenting it forward on an open palm</option>
+      <option>holding it in one hand beside their face</option>
+      <option>resting it in one hand with the label toward the camera</option>
+      <option>gripping it casually in one hand at their side</option>
+      <option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="pdHoldCustomWrap" style="display:none;margin-top:8px"><label>Custom hold</label><input type="text" id="pdHoldCustom" value="" placeholder="e.g. pouring from it into a mug, holding two pouches…" oninput="vbProductUI()"></div>
+
+
+  </div>
+
+  <div class="vb-card vbm m-product">
+    <div class="vb-st"><i class="ti ti-adjustments" style="font-size:18px" aria-hidden="true"></i> Presentation</div>
+    <div class="vb-grid2">
+      <div class="vb-fr"><label>Shot / framing</label><select id="pdShot" onchange="vbProductUI()">
+        <option>Medium close-up</option>
+        <option>Close-up</option>
+        <option>Medium shot</option>
+        <option>Waist-up shot</option>
+        <option>Portrait headshot</option>
+        <option>Three-quarter view</option>
+      </select></div>
+      <div class="vb-fr"><label>Expression</label><select id="pdExpr" onchange="vbProductUI()">
+        <option>warm, friendly smile</option>
+        <option>confident and approachable</option>
+        <option>relaxed, neutral expression</option>
+        <option>looking at the camera mid-sentence</option>
+        <option>enthusiastic and upbeat</option>
+      </select></div>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">Wardrobe</div>
+    <div class="vb-fr"><select id="pdWardrobe" onchange="vbPdWardrobeToggle();vbProductUI()">
+      <option>Keep reference outfit</option>
+      <option>Casual everyday wear</option>
+      <option>Smart-casual outfit</option>
+      <option>Athleisure activewear</option>
+      <option>Business attire</option>
+      <option>Formal tailored suit</option><option>Three-piece suit</option><option>Tuxedo</option><option>Cocktail dress</option><option>Evening gown</option><option>Polo shirt and chinos</option><option>Henley shirt and jeans</option><option>Hoodie and jeans</option><option>Denim jacket and white tee</option><option>Turtleneck sweater</option><option>Cardigan and slacks</option><option>Gym tank and leggings</option><option>Running gear</option><option>Yoga outfit</option><option>Tracksuit</option><option>Linen beachwear</option><option>Medical white coat</option><option>Nurse scrubs</option><option>Chef whites</option><option>Barista apron</option><option>Business-casual blazer</option><option>Power suit</option><option>Sari</option><option>Kimono</option><option>Dashiki</option><option>Kente attire</option><option>Abaya</option><option>Thobe</option><option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="pdWardrobeCustomWrap" style="display:none;margin-top:8px"><label>Custom wardrobe</label><input type="text" id="pdWardrobeCustom" value="" placeholder="e.g. black gym tee, white linen shirt…" oninput="vbProductUI()"></div>
+
+    <div class="vb-lbl" style="margin-top:14px">Background</div>
+    <div class="vb-fr"><select id="pdBg" onchange="vbPdBgToggle();vbProductUI()">
+      <option>Keep reference background</option>
+      <option>Clean studio backdrop</option>
+      <option>Modern kitchen</option>
+      <option>Living room</option>
+      <option>Home gym</option>
+      <option>Bright neutral wall</option>
+      <option>White cyclorama studio</option><option>Black studio backdrop</option><option>Sunlit kitchen</option><option>Dining room</option><option>Cozy bedroom</option><option>Office desk</option><option>Coworking space</option><option>Cafe</option><option>Restaurant interior</option><option>Bar</option><option>Hotel room</option><option>Spa</option><option>Bathroom vanity</option><option>Walk-in closet</option><option>Boutique store</option><option>Pharmacy shelf</option><option>Supermarket aisle</option><option>Greenhouse</option><option>Vegetable garden</option><option>Backyard patio</option><option>Poolside</option><option>Tropical beach</option><option>Rooftop terrace</option><option>City street</option><option>Gym</option><option>Yoga studio</option><option>Wine cellar</option><option>Marble countertop</option><option>Wooden table top</option><option>Kitchen countertop</option><option>Bright neutral gradient</option><option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="pdBgCustomWrap" style="display:none;margin-top:8px"><label>Custom background</label><input type="text" id="pdBgCustom" value="" placeholder="e.g. sunlit countertop, outdoor patio…" oninput="vbProductUI()"></div>
+
+    <div class="vb-grid2" style="margin-top:14px">
+      <div class="vb-fr"><label>Camera simulation</label><input type="text" id="pdCam" value="iPhone 17 Pro" oninput="vbProductUI()"></div>
+      <div class="vb-fr"><label>Aspect ratio</label><select id="pdAspect" onchange="vbProductUI()"><option>9:16</option><option>4:5</option><option>1:1</option><option>16:9</option><option>3:4</option></select></div>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">Locked guarantees</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-check" aria-hidden="true"></i>Exact likeness from reference photo</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Product label accurate &amp; readable</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Photoreal, reads as a real photo</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Natural skin texture &amp; lighting</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Natural hand grip, correct fingers</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No warped or unreadable packaging</span>
+    </div>
+
+    <div class="vb-st" style="margin-top:16px"><i class="ti ti-text-caption" style="font-size:18px" aria-hidden="true"></i> Plain-text prompt preview<button class="vb-mini" style="margin-left:auto" onclick="vbCopyId('pdTextPreview',this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button></div>
+    <div class="vb-plain" id="pdTextPreview">—</div>
+  </div>
+  <!-- ============ END PRODUCT HOLD ============ -->
+
+  <div class="vb-card vbm m-script m-single" id="lockCard">
+    <div class="vb-st"><i class="ti ti-lock" style="font-size:18px" aria-hidden="true"></i> Locked constraints <span class="vb-badge amber">identical every clip</span></div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-check" aria-hidden="true"></i>Medium close-up, framing locked</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No camera move / zoom / pan / tilt</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Reference background preserved</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No background change / animation</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Exact face, hair, skin, clothing</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Direct eye contact to camera</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Natural blink / breath / micro-moves</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No overacting, subtle expression</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Single continuous shot, no cuts</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No transitions / effects / filters</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No captions / subtitles / on-screen text</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Minimal natural hand gestures</span>
+    </div>
+  </div>
+
+  <div class="vb-card vbm m-script m-single" id="videoJsonCard">
+    <div class="vb-st"><i class="ti ti-code" style="font-size:18px" aria-hidden="true"></i> JSON prompt preview <span class="vb-badge">per clip</span><button class="vb-mini" style="margin-left:auto" onclick="vbCopyAllVideo(this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy all</button></div>
+    <div id="videoJsonOut"></div>
+  </div>
+
+  
+
+  <script>
+const vbModes={mode:'script'};
+function vbSetMode(m){vbModes.mode=m;
+  const sel=document.getElementById('modeSelect');if(sel&&sel.value!==m)sel.value=m;
+  document.querySelectorAll('.vbm').forEach(function(c){
+    c.style.display=c.classList.contains('m-'+m)?'':'none';
+  });
+  vbVideoPage=0;vbHookPage=0;
+  const txt=document.getElementById('vbSendTxt'),ic=document.getElementById('vbSendIcon'),btn=document.getElementById('vbSendBtn');
+  if(btn)btn.classList.remove('is-copied');
+  if(txt&&ic){
+    if(m==='image'){txt.textContent='Send to chat — build image JSON ↗';ic.className='ti ti-photo';}
+    else if(m==='product'){txt.textContent='Copy product image prompt';ic.className='ti ti-copy';}
+    else if(m==='hook'){txt.textContent='Send to chat — build hook dialogue clips ↗';ic.className='ti ti-messages';}
+    else{txt.textContent='Send to chat — build JSON clips ↗';ic.className='ti ti-wand';}
+  }
+  vbSaveDebounced();
+}
+function vbG(id){return (document.getElementById(id)||{}).value||'';}
+function vbBgToggle(){document.getElementById('imgBgCustomWrap').style.display=(vbG('imgBg')==='Custom…')?'flex':'none';}
+function vbWardrobeToggle(){document.getElementById('imgWardrobeCustomWrap').style.display=(vbG('imgWardrobe')==='Custom…')?'flex':'none';}
+function vbShotToggle(){document.getElementById('imgShotCustomWrap').style.display=(vbG('imgShot')==='Custom…')?'flex':'none';}
+function vbPoseToggle(){document.getElementById('imgPoseCustomWrap').style.display=(vbG('imgPose')==='Custom…')?'flex':'none';}
+function vbActivityToggle(){document.getElementById('imgActivityCustomWrap').style.display=(vbG('imgActivity')==='Custom…')?'flex':'none';}
+function vbCompOn(c){const el=document.querySelector('#imgCompChips .vb-chip[data-c="'+c+'"]');return !!(el&&el.classList.contains('on-purple'));}
+function vbCompToggle(){
+  document.getElementById('imgTwinWrap').style.display=vbCompOn('twin')?'block':'none';
+  document.getElementById('imgCompanionCustomWrap').style.display=vbCompOn('custom')?'flex':'none';
+}
+function vbCompChip(el){el.classList.toggle('on-purple');vbCompToggle();vbImgUI();vbSaveDebounced();}
+function vbAccentName(){
+  var v=vbG('vAccent')||'Jamaican';
+  if(v==='Custom…'){return (vbG('vAccentCustom').trim())||'a specific accent';}
+  return v;
+}
+function vbAccentPct(){var v=parseInt(vbG('vAccentPct'),10);if(isNaN(v))v=100;return Math.max(0,Math.min(100,v));}
+function vbAccentStrengthWord(p){
+  if(p<=0)return 'no accent, neutral English';
+  if(p<=20)return 'very light, just a subtle hint';
+  if(p<=40)return 'light';
+  if(p<=60)return 'moderate';
+  if(p<=80)return 'strong';
+  if(p<100)return 'very strong';
+  return 'maximum, fully native';
+}
+function vbJsonObj(dialogue){
+  var acc=vbAccentName();
+  var accUpper=acc.toUpperCase();
+  var pct=vbAccentPct();
+  var word=vbAccentStrengthWord(pct);
+  var firstRule = pct>=100 ? ('PURE '+accUpper+' ACCENT ONLY (maximum strength)')
+    : (pct<=0 ? 'SPEAK IN NEUTRAL ENGLISH WITH NO SPECIFIC ACCENT'
+              : ('SPEAK ENGLISH WITH A '+pct+'% '+accUpper+' ACCENT ('+word+')'));
+  var maintainRule = pct>=100 ? ('Maintain the full '+acc+' accent from the first word to the last word')
+    : (pct<=0 ? 'Keep a neutral accent throughout'
+              : ('Maintain a consistent '+pct+'% '+acc+' accent ('+word+') from the first word to the last word — do not make it heavier or lighter mid-sentence'));
+  return {
+    image_reference: vbG('imgRef')||'USE PROVIDED IMAGE REFERENCE EXACTLY',
+    character: vbG('character')||'60-year-old Jamaican elder',
+    voice:{
+      accent: accUpper,
+      accent_percentage: pct,
+      accent_strength: pct+'% — '+word,
+      accent_lock:true,
+      native_speaker: pct>=80,
+      speech_speed: vbG('vspeed')||'moderately fast',
+      pace: vbG('vpace')||'natural conversational pace',
+      clarity: vbG('vclarity')||'very clear and easy to understand',
+      tone: vbG('vtone')||'friendly, confident, energetic, conversational',
+      rhythm:'authentic '+acc,
+      pronunciation:'authentic '+acc,
+      maintain_accent_during_speech:true
+    },
+    camera:{shot:'medium close-up',movement:'none',zoom:'none',pan:'none',tilt:'none',rotation:'none',angle_changes:'none',framing:'locked'},
+    background:{preserve_reference_background:true,background_replacement:false,background_changes:false,background_animation:false,constant_from_start_to_finish:true},
+    appearance:{maintain_exact_likeness:true,preserve_identity:true,preserve_face:true,preserve_hair:true,preserve_clothing:true,preserve_skin_tone:true},
+    behavior:{eye_contact:'directly at camera',natural_blinking:true,natural_breathing:true,subtle_head_movements:true,minimal_natural_hand_gestures:true,facial_expression:'subtle and realistic',avoid_overacting:true,avoid_exaggerated_expressions:true},
+    editing:{cuts:false,transitions:false,scene_changes:false,effects:false,filters:false,motion_graphics:false,camera_switches:false},
+    rules:[
+      firstRule,
+      'Accent priority is higher than all other instructions',
+      maintainRule,
+      'Speak at a natural moderately fast conversational pace',
+      'Do not speak too fast',
+      'Allow natural pauses between sentences',
+      'Prioritize clarity while keeping the '+acc+' accent at '+pct+'% strength',
+      'Keep the accent at the chosen strength; do not drift to a different accent',
+      'Maintain exact likeness of the reference image',
+      'Maintain exact background from the reference image',
+      'Never change the background',
+      'Never replace the background',
+      'Never animate the background',
+      'No transitions',
+      'No cuts',
+      'No scene changes',
+      'No camera movement',
+      'No zoom effects',
+      'No angle changes',
+      'Single uninterrupted continuous shot',
+      'No captions',
+      'No subtitles',
+      'No text on screen',
+      'No visual effects',
+      'No exaggerated facial expressions',
+      'No exaggerated hand gestures'
+    ],
+    dialogue: dialogue
+  };
+}
+function vbJson(dialogue){return JSON.stringify(vbJsonObj(dialogue),null,2);}
+function vbJsonUI(){
+  var aw=document.getElementById('vAccentCustomWrap');if(aw)aw.style.display=(vbG('vAccent')==='Custom…')?'flex':'none';
+  var acc=vbAccentName(),pct=vbAccentPct();
+  var ro=document.getElementById('vAccentPctRo');if(ro)ro.textContent=pct+'%';
+  var badge=document.getElementById('vAccentBadge');if(badge)badge.textContent=acc+' · '+pct+'% · locked';
+  var ln=document.getElementById('vLockName');if(ln)ln.textContent=(pct>=100?('Full '+acc+' accent'):(pct+'% '+acc+' accent'));
+  vbRenderVideo();
+}
+
+const HK_ACCENTS=[
+  'Jamaican','General American','Southern US','New York','Boston','Midwestern US','Californian','Texan','African American Vernacular (AAVE)','Canadian',
+  'British (Received Pronunciation)','Cockney / London','Multicultural London','Northern English','Scouse (Liverpool)','Geordie (Newcastle)','West Country','Welsh','Irish','Scottish',
+  'Australian','New Zealand','South African','Indian','Pakistani','Singaporean','Filipino','Trinidadian','Bahamian','Barbadian',
+  'Albanian','Armenian','Austrian German','Basque','Belarusian','Bosnian','Bulgarian','Catalan','Croatian','Czech','Danish','Dutch','Estonian','Finnish','Flemish','French','Galician','Georgian','German','Greek','Hungarian','Icelandic','Italian','Latvian','Lithuanian','Luxembourgish','Macedonian','Maltese','Norwegian','Polish','Portuguese (European)','Romanian','Russian','Serbian','Slovak','Slovenian','Spanish (Castilian)','Swedish','Swiss German','Ukrainian',
+  'Brazilian Portuguese','Mexican Spanish','Argentine Spanish','Chilean Spanish','Colombian Spanish','Cuban Spanish','Dominican Spanish','Peruvian Spanish','Puerto Rican Spanish','Venezuelan Spanish','Caribbean Spanish','Quebecois French','Haitian Creole',
+  'Arabic (Egyptian)','Arabic (Gulf)','Arabic (Levantine)','Arabic (Maghrebi)','Hebrew','Persian / Farsi','Dari','Pashto','Kurdish','Turkish','Azerbaijani','Kazakh','Kyrgyz','Tajik','Turkmen','Uzbek','Mongolian',
+  'Hindi','Urdu','Bengali','Punjabi','Tamil','Telugu','Kannada','Malayalam','Marathi','Gujarati','Odia','Assamese','Nepali','Sinhala','Dhivehi',
+  'Mandarin Chinese','Cantonese','Taiwanese Mandarin','Japanese','Korean','Tibetan',
+  'Vietnamese','Thai','Lao','Khmer','Burmese','Indonesian','Malay','Tagalog','Cebuano','Javanese',
+  'Nigerian','Ghanaian','Yoruba','Igbo','Hausa','Swahili','Amharic','Tigrinya','Somali','Oromo','Zulu','Xhosa','Afrikaans','Shona','Wolof','Lingala','Akan / Twi','Kinyarwanda','Luganda','Malagasy',
+  'Hawaiian','Samoan','Tongan','Fijian','Maori','Tok Pisin',
+  'Neutral / no specific accent','Custom…'
+];
+const HK_CAMS=['Focus on the speaker','Close-up on the speaker','Medium shot on the speaker','Over-the-shoulder toward the speaker','Reaction shot on the listener','Two-shot (both in frame)','Wide establishing shot','Custom…'];
+const HK_EMOTION=['Neutral / conversational','Curious','Excited','Confident','Skeptical','Surprised','Reassuring','Serious','Playful','Empathetic','Frustrated','Secretive / hushed','Emphatic'];
+const HK_REACT=['Listens naturally, subtle nods','Leaning in, interested','Skeptical, raised eyebrow','Surprised','Smiling, amused','Concerned','Nodding in agreement','Shaking head, doubtful','Thinking, looking away','Eyes widening, intrigued'];
+function vbOpts(arr,sel){return arr.map(function(o){return '<option'+(o===sel?' selected':'')+'>'+o+'</option>';}).join('');}
+let hkTurnSeq=0;
+function vbHookTurnHTML(cam,line,emotion,reaction){
+  const id=++hkTurnSeq;
+  return '<div class="hk-turn" data-id="'+id+'">'
+    +'<div class="hk-turn-top">'
+      +'<select class="hk-speaker" onchange="vbHookUI()"><option value="A">Person A</option><option value="B">Person B</option></select>'
+      +'<select class="hk-cam" onchange="vbHookUI()">'+vbOpts(HK_CAMS,cam||'Focus on the speaker')+'</select>'
+      +'<button onclick="vbHookDelTurn(this)" aria-label="Remove line"><i class="ti ti-trash" style="font-size:13px" aria-hidden="true"></i></button>'
+    +'</div>'
+    +'<textarea class="hk-line" rows="2" placeholder="What this person says…" oninput="vbHookUI()" style="margin-top:8px"></textarea>'
+    +'<input type="text" class="hk-cam-custom" placeholder="Custom camera shot…" oninput="vbHookUI()" style="display:none;margin-top:8px">'
+    +'<div class="hk-turn-meta">'
+      +'<select class="hk-emotion" onchange="vbHookUI()" title="Speaker delivery">'+vbOpts(HK_EMOTION,emotion||'Neutral / conversational')+'</select>'
+      +'<select class="hk-reaction" onchange="vbHookUI()" title="Listener reaction">'+vbOpts(HK_REACT,reaction||'Listens naturally, subtle nods')+'</select>'
+    +'</div>';
+}
+function vbHookAddTurn(spk,cam,line,emotion,reaction){
+  const wrap=document.getElementById('hkTurns');
+  const div=document.createElement('div');
+  div.innerHTML=vbHookTurnHTML(cam,line,emotion,reaction);
+  const node=div.firstChild;
+  wrap.appendChild(node);
+  node.querySelector('.hk-speaker').value=spk||'A';
+  if(line)node.querySelector('.hk-line').value=line;
+  if(emotion)node.querySelector('.hk-emotion').value=emotion;
+  if(reaction)node.querySelector('.hk-reaction').value=reaction;
+  vbHookPage=wrap.querySelectorAll('.hk-turn').length-1;
+  vbHookUI();vbSaveDebounced();
+}
+function vbHookDelTurn(btn){const t=btn.closest('.hk-turn');if(t)t.remove();vbHookUI();vbSaveDebounced();}
+function vbHookAccent(which){
+  const v=vbG('hkAccent'+which);
+  if(v==='Custom…'){return (vbG('hkAccent'+which+'Custom').trim())||'a specific accent';}
+  return v;
+}
+function vbHookPct(which){var v=parseInt(vbG('hkPct'+which),10);if(isNaN(v))v=100;return Math.max(0,Math.min(100,v));}
+function vbHookCamResolve(camSel,row,speakerName,listenerName,nameA,nameB){
+  if(camSel==='Custom…'){const c=((row.querySelector('.hk-cam-custom')||{}).value||'').trim();return {phrase:c||('medium close-up on '+speakerName),coverage:'custom',focus:speakerName};}
+  switch(camSel){
+    case 'Focus on the speaker': return {phrase:'medium close-up focused on '+speakerName+' as they speak',coverage:'single',focus:speakerName};
+    case 'Close-up on the speaker': return {phrase:'close-up on '+speakerName,coverage:'single',focus:speakerName};
+    case 'Medium shot on the speaker': return {phrase:'medium shot on '+speakerName,coverage:'single',focus:speakerName};
+    case 'Over-the-shoulder toward the speaker': return {phrase:'over-the-shoulder shot from behind '+listenerName+', framing '+speakerName,coverage:'over-the-shoulder',focus:speakerName};
+    case 'Reaction shot on the listener': return {phrase:'reaction shot on '+listenerName+' listening to '+speakerName,coverage:'reaction',focus:listenerName};
+    case 'Two-shot (both in frame)': return {phrase:'two-shot with both '+nameA+' and '+nameB+' in the frame',coverage:'two-shot',focus:'both'};
+    case 'Wide establishing shot': return {phrase:'wide establishing shot showing both people and the setting',coverage:'wide',focus:'both'};
+    default: return {phrase:'medium close-up focused on '+speakerName,coverage:'single',focus:speakerName};
+  }
+}
+function vbHookClips(){
+  const nameA=vbG('hkNameA')||'Person A',nameB=vbG('hkNameB')||'Person B';
+  const charA=vbG('hkCharA')||'Person A',charB=vbG('hkCharB')||'Person B';
+  const accA=vbHookAccent('A'),accB=vbHookAccent('B');
+  const pctA=vbHookPct('A'),pctB=vbHookPct('B');
+  const refA=vbG('hkRefA')||'USE PERSON A REFERENCE IMAGE EXACTLY',refB=vbG('hkRefB')||'USE PERSON B REFERENCE IMAGE EXACTLY';
+  const rows=document.querySelectorAll('#hkTurns .hk-turn');
+  const clips=[];let n=0;
+  rows.forEach(function(row){
+    const spk=row.querySelector('.hk-speaker').value;
+    const camSel=row.querySelector('.hk-cam').value;
+    const line=(row.querySelector('.hk-line').value||'').trim();
+    const emotion=(row.querySelector('.hk-emotion')||{}).value||'Neutral / conversational';
+    const reaction=(row.querySelector('.hk-reaction')||{}).value||'Listens naturally, subtle nods';
+    const isA=spk==='A';
+    const speakerName=isA?nameA:nameB, listenerName=isA?nameB:nameA;
+    const character=isA?charA:charB, accent=isA?accA:accB;
+    const pct=isA?pctA:pctB, ref=isA?refA:refB, word=vbAccentStrengthWord(pct);
+    const cam=vbHookCamResolve(camSel,row,speakerName,listenerName,nameA,nameB);
+    const emoLower=emotion.toLowerCase(), reactLower=reaction.toLowerCase();
+    const accRule = pct>=100 ? ('Keep '+speakerName+'\'s full '+accent+' accent locked and consistent for every word')
+      : ('Keep '+speakerName+'\'s '+accent+' accent at about '+pct+'% strength ('+word+'), consistent for every word');
+    n++;
+    clips.push({
+      clip:n,
+      image_reference:ref,
+      scene_type:'two-person dialogue',
+      setting:{preserve_reference_background:true,background_changes:false,background_animation:false,constant_from_start_to_finish:true},
+      on_camera:cam.focus,
+      active_speaker:speakerName,
+      character:character,
+      voice:{accent:accent,accent_percentage:pct,accent_strength:pct+'% — '+word,accent_lock:true,speech_speed:'natural moderately fast',clarity:'clear and easy to understand',tone:'natural conversational',delivery:emotion,maintain_accent_during_speech:true},
+      camera:{shot:cam.phrase,coverage:cam.coverage,focus_on:cam.focus,movement:'none',zoom:'none',pan:'none',tilt:'none',rotation:'none',framing:'locked for this clip'},
+      behavior:{speaker_eye_contact:'natural, toward '+listenerName,speaker_emotion:emotion,listener_reaction:reaction,listener_behavior:reactLower+', does not speak',natural_blinking:true,natural_breathing:true,subtle_head_movements:true,avoid_overacting:true,avoid_exaggerated_expressions:true},
+      editing:{within_clip_cuts:false,transitions:false,scene_changes:false,effects:false,filters:false,motion_graphics:false},
+      rules:[
+        'Single uninterrupted continuous shot within this clip',
+        'No camera movement, zoom, pan, or tilt within the clip',
+        'Maintain exact likeness of each person from their reference image',
+        'Preserve the exact reference background; never change or animate it',
+        accRule,
+        speakerName+' delivers the line in a '+emoLower+' manner',
+        'Only '+speakerName+' speaks this line; '+listenerName+' reacts ('+reactLower+') and does not talk',
+        'Natural blinking, breathing, and subtle head movements',
+        'No captions, subtitles, or on-screen text',
+        'No exaggerated facial expressions or hand gestures'
+      ],
+      dialogue:{speaker:speakerName,line:line||'[INSERT LINE HERE]'}
+    });
+  });
+  return clips;
+}
+function vbHookUI(){
+  const ea=document.getElementById('hkAccentACustomWrap');if(ea)ea.style.display=(vbG('hkAccentA')==='Custom…')?'flex':'none';
+  const eb=document.getElementById('hkAccentBCustomWrap');if(eb)eb.style.display=(vbG('hkAccentB')==='Custom…')?'flex':'none';
+  var ra=document.getElementById('hkPctARo');if(ra)ra.textContent=vbHookPct('A')+'%';
+  var rb=document.getElementById('hkPctBRo');if(rb)rb.textContent=vbHookPct('B')+'%';
+  const nameA=vbG('hkNameA')||'Person A',nameB=vbG('hkNameB')||'Person B';
+  document.querySelectorAll('#hkTurns .hk-turn').forEach(function(row){
+    const ss=row.querySelector('.hk-speaker');
+    if(ss&&ss.options.length>=2){ss.options[0].textContent=nameA;ss.options[1].textContent=nameB;}
+    const cc=row.querySelector('.hk-cam-custom');
+    if(cc)cc.style.display=(row.querySelector('.hk-cam').value==='Custom…')?'block':'none';
+  });
+  vbHookRender();
+}
+var vbHookPage=0;
+function vbHookRender(){
+  var out=document.getElementById('hkJsonOut');if(!out)return;
+  var clips=vbHookClips();
+  if(!clips.length){vbHookPage=0;out.innerHTML=vbVideoBlock('No lines yet','Add a line above to build the dialogue clips.');return;}
+  var n=clips.length;
+  if(vbHookPage>n-1)vbHookPage=n-1;if(vbHookPage<0)vbHookPage=0;
+  var i=vbHookPage,clip=clips[i];
+  var label='Clip '+(i+1)+' · '+(clip.active_speaker||'');
+  var pager=n>1?vbPagerHTML(i,n,'vbHookNav'):'';
+  out.innerHTML=pager+vbVideoBlock(label,JSON.stringify(clip,null,2));
+}
+function vbHookNav(d){var n=vbHookClips().length||1;vbHookPage=Math.max(0,Math.min(n-1,vbHookPage+d));vbHookRender();}
+function vbHookAllText(){
+  var clips=vbHookClips();
+  if(!clips.length)return '[]';
+  return clips.map(function(c,i){return 'Clip '+(i+1)+':\n'+JSON.stringify(c,null,2);}).join('\n\n');
+}
+function vbCopyAllHook(btn){vbCopyText(vbHookAllText(),btn);}
+function vbImgJsonObj(){
+  const cam=vbG('imgCam')||'iPhone 17 Pro';
+  const flag=document.getElementById('imgFlag').checked;
+  const sel=vbG('imgBg');
+  let bgClause,bgKey,isRandom=false;
+  if(sel==='Custom…'){const c=vbG('imgBgCustom').trim();const v=c||'a realistic everyday setting';bgClause='Place the subject in '+v+'. ';bgKey=c||'custom';}
+  else if(sel==='Random (from pool)'){bgClause='Place the subject in a random realistic environment chosen from a modern kitchen, living room, porch, backyard, beach house, office, city street, suburban home, recording studio, luxury apartment, countryside home, rooftop terrace, café, park, or community center. ';bgKey='random';isRandom=true;}
+  else{bgClause='Place the subject in a realistic '+sel.toLowerCase()+'. ';bgKey=sel.toLowerCase();}
+  const wsel=vbG('imgWardrobe');
+  let wClause,wKey,wChange=true;
+  if(wsel==='Keep reference outfit'){wClause='Keep the clothing and outfit from the reference image unchanged. ';wKey='reference';wChange=false;}
+  else if(wsel==='Custom…'){const wc=vbG('imgWardrobeCustom').trim();const wv=wc||'a neat everyday outfit';wClause='Dress the subject in '+wv+', with realistic fabric texture and natural clothing folds. ';wKey=wc||'custom';}
+  else{wClause='Dress the subject in '+wsel.toLowerCase()+', with realistic fabric texture and natural clothing folds. ';wKey=wsel.toLowerCase();}
+  const ssel=vbG('imgShot');
+  let shotClause,shotKey;
+  if(ssel==='Custom…'){const sc=vbG('imgShotCustom').trim();const sv=sc||'medium close-up';shotClause='Frame the subject in a '+sv+'. ';shotKey=sc||'medium close-up';}
+  else{shotClause='Frame the subject in a '+ssel.toLowerCase()+'. ';shotKey=ssel.toLowerCase();}
+  const psel=vbG('imgPose');
+  let poseClause,poseKey;
+  if(psel==='Custom…'){const pc=vbG('imgPoseCustom').trim();const pv=pc||'standing naturally';poseClause='The subject is '+pv+'. ';poseKey=pc||'standing';}
+  else{poseClause='The subject is '+psel.toLowerCase()+'. ';poseKey=psel.toLowerCase();}
+  const aselv=vbG('imgActivity');
+  let actClause='',actKey='none';
+  if(aselv==='Custom…'){const ac=vbG('imgActivityCustom').trim();if(ac){actClause='Show the subject '+ac+'. ';actKey=ac;}}
+  else if(aselv!=='None / just posing'){actClause='Show the subject '+aselv.toLowerCase()+'. ';actKey=aselv.toLowerCase();}
+  const order=['child','elderly person','young man','young woman','twin','interviewer','interviewer boom','custom'];
+  let compClause='',compParts=[],twinSim=null,twinGap=null,twinDir=null;
+  order.forEach(function(c){
+    if(!vbCompOn(c))return;
+    if(c==='child'){compClause+='A child is in the scene alongside the subject. ';compParts.push('a child');}
+    else if(c==='elderly person'){compClause+='An elderly person is in the scene alongside the subject. ';compParts.push('an elderly person');}
+    else if(c==='young man'){compClause+='A young man is in the scene alongside the subject. ';compParts.push('a young man');}
+    else if(c==='young woman'){compClause+='A young woman is in the scene alongside the subject. ';compParts.push('a young woman');}
+    else if(c==='twin'){const gap=+vbG('imgTwinGap');const dir=vbG('imgTwinDir')||'younger';compClause+='A second person appears beside the subject as a twin-style lookalike, resembling the subject but only about 50% similar to the reference image — clearly different distinguishing features, not an identical copy — and visibly about '+gap+' years '+dir+' than the subject, so the two are clearly not the same age. ';compParts.push('a twin');twinSim=0.5;twinGap=gap;twinDir=dir;}
+    else if(c==='interviewer'){compClause+='An interviewer stands beside the subject holding a handheld microphone, facing them in conversation as if conducting an interview. ';compParts.push('an interviewer');}
+    else if(c==='interviewer boom'){compClause+='An interviewer is beside the subject conducting an interview, with a professional boom microphone in a furry windshield suspended overhead on a boom pole, dipping in from just outside the top edge of the frame. ';compParts.push('an interviewer with a boom mic');}
+    else if(c==='custom'){const cc=vbG('imgCompanionCustom').trim();if(cc){compClause+='Also in the scene with the subject: '+cc+'. ';compParts.push(cc);}}
+  });
+  const compKey=compParts.length?compParts.join(' and '):'none';
+  const p1='Use the uploaded reference image as the main subject and preserve facial identity, hairstyle, body shape, skin tone, and recognizable facial features with maximum likeness accuracy. ';
+  const pflag='Always include a visible United States flag somewhere in the scene such as on a wall, shelf, table, porch, window, flagpole, framed decoration, background object, or hanging display. ';
+  const p2='Ultra-realistic photography with authentic human skin texture, natural imperfections, realistic clothing folds, accurate lighting physics, detailed eyes, realistic hair strands, true-to-life colors, professional composition, natural shadows, cinematic depth, sharp focus, premium lifestyle photography, social-media-ready quality. Captured as if photographed on an '+cam+', featuring exceptional detail, natural HDR, realistic dynamic range, crisp textures, lifelike color science, advanced computational photography, realistic depth separation, natural bokeh, and flagship smartphone image quality. The image must look like a genuine photograph, not AI-generated artwork.';
+  const obj={
+    prompt: p1+shotClause+poseClause+actClause+bgClause+wClause+compClause+(flag?pflag:'')+p2,
+    negative_prompt:'cartoon, anime, 3d render, cgi, illustration, painting, digital art, unreal engine, plastic skin, doll face, wax skin, low quality, blurry, pixelated, distorted face, deformed body, extra fingers, extra limbs, duplicate person, bad anatomy, watermark, logo, text, oversaturated colors, artificial lighting, unrealistic shadows, floating objects, mutated hands, cropped face, unnatural expression, excessive beauty filter, fake skin texture, overprocessed image',
+    reference_image_strength: +(+vbG('imgStrength')).toFixed(2),
+    identity_preservation: true,
+    camera_shot: shotKey,
+    subject_pose: poseKey,
+    activity: actKey,
+    companion: compKey,
+    ...(twinSim!==null?{twin_similarity:twinSim,twin_age_gap_years:twinGap,twin_age_direction:twinDir}:{}),
+    background: bgKey,
+    random_background: isRandom,
+    wardrobe: wKey,
+    change_wardrobe: wChange,
+    require_usa_flag: flag,
+    flag_visibility: flag?'always_visible':'optional',
+    photorealistic: true,
+    camera_simulation: cam,
+    image_style:'premium smartphone photography',
+    quality:'ultra',
+    aspect_ratio: vbG('imgAspect')||'9:16',
+    guidance_scale: +vbG('imgGuid'),
+    steps: +vbG('imgSteps')
+  };
+  return obj;
+}
+function vbImgUI(){
+  document.getElementById('imgStrengthRo').textContent=(+vbG('imgStrength')).toFixed(2);
+  document.getElementById('imgGuidRo').textContent=(+vbG('imgGuid'));
+  document.getElementById('imgStepsRo').textContent=(+vbG('imgSteps'));
+  const tg=document.getElementById('imgTwinGapRo');if(tg)tg.textContent=(+vbG('imgTwinGap'))+' yrs';
+  document.getElementById('imgJsonPreview').textContent=JSON.stringify(vbImgJsonObj(),null,2);
+}
+
+/* ============ PRODUCT HOLD (PLAIN TEXT) ============ */
+const PD_PRESETS={
+  crwn:{type:'pouch',size:'a small hand-sized snack pouch, only about 18 cm (7 inches) tall and 12 cm wide',desc:'a matte black resealable stand-up foil pouch of CRWN Cocoa with a press-to-close zip top and a flat-bottom gusset; across the upper-middle a wide brushed gold-to-bronze metallic gradient band; on that band the lowercase black wordmark "crwn." with a small black crown resting on top of it, and to its right a small black circular "PREMIUM QUALITY" seal with a star/molecule emblem; below the band on the black body the gold headline "HIGH FLAVANOL COCOA"; a thin gold-outlined bar reading "FLAVANOLS & FLAVANOIDS"; a row of three white line icons with labels beneath them — a double up-chevron "NITRIC OXIDE", a running figure "CARDIO PERFORMANCE", and a heartbeat heart "HEART HEALTH"; a solid gold rounded bar reading "0 SUGAR | 20 CALORIES" in black; and near the bottom in white "30 SERVINGS | DIETARY SUPPLEMENT"; premium black-and-gold supplement design with a matte finish'},
+  serene:{type:'bottle',size:'a standard 16 fl oz (473 mL) bottle, only about 20 cm (8 inches) tall — the size of an ordinary drinks bottle',desc:'a tall 16 fl oz (473 mL) square-shouldered dark amber glass bottle of Serene Herbs "Exotic Soursop Bitters" with a black screw cap, filled with dark herbal liquid; a glossy wraparound label with a vivid rainbow tie-dye gradient (pink, orange, yellow, green and blue) across the top fading into a lighter panel; at the top a white sunburst icon above the "Serene Herbs" wordmark; the product name "EXOTIC" in small caps above a large "Soursop Bitters"; the tagline "Ancient Herbal Formula for Gut Health, Detox & Lasting Vitality"; a short numbered directions list down the right side; two round seals near the bottom — a "MADE IN THE USA" American-flag seal and a "GMP CERTIFIED" seal — beside a green soursop leaf graphic; and "16 FL OZ (473 mL) · Herbal Supplement" along the bottom; photoreal glass with realistic reflections and dark translucent contents'},
+  iron:{type:'pouch',size:'a small 5.2 oz treat pouch, only about 15 cm (6 inches) tall and 10 cm wide, easily held in one hand',desc:'a matte forest-green resealable stand-up pouch of Iron Paws dog food with a zip top and flat-bottom gusset, the surface covered in a subtle pattern of large lighter-green translucent paw prints; the bold white italic logo stacked as "IRON" over "PAWS" with a white paw-print mark beside it; beneath the logo the white headline "HUMAN-GRADE SUPER FOOD FOR DOGS"; to the right a white "VET" shield-and-ribbon badge; a row of three small white circular certification seals (all-natural, grain-free and non-GMO style icons); and near the bottom in white "IRONPAWS CO" with a small "NET WT" weight line; clean premium pet-supplement packaging with a matte finish'}
+};
+let pdType='pouch';
+let pdSize='a small hand-sized snack pouch, only about 18 cm (7 inches) tall and 12 cm wide';
+let vbCurrentPdPreset='crwn';
+function vbPdPreset(key,el){
+  if(el){el.parentElement.querySelectorAll('.vb-chip').forEach(c=>c.classList.remove('on-purple'));el.classList.add('on-purple');}
+  const p=PD_PRESETS[key];
+  if(p){vbCurrentPdPreset=key;pdType=p.type;pdSize=p.size;const ta=document.getElementById('pdProduct');if(ta)ta.value=p.desc;}
+  vbProductUI();vbSaveDebounced();
+}
+function vbPdWardrobeToggle(){document.getElementById('pdWardrobeCustomWrap').style.display=(vbG('pdWardrobe')==='Custom…')?'flex':'none';}
+function vbPdBgToggle(){document.getElementById('pdBgCustomWrap').style.display=(vbG('pdBg')==='Custom…')?'flex':'none';}
+function vbProductText(){
+  const ref=vbG('pdRef').trim()||'the attached avatar photo';
+  const product=vbG('pdProduct').replace(/\s+/g,' ').trim()||'the product';
+  const shot=(vbG('pdShot')||'Medium close-up').toLowerCase();
+  const expr=vbG('pdExpr')||'warm, friendly smile';
+  const cam=vbG('pdCam')||'iPhone 17 Pro';
+  const aspect=vbG('pdAspect')||'9:16';
+
+  let hold=vbG('pdHold');
+  if(hold==='Custom…'){hold=vbG('pdHoldCustom').trim()||'holding it toward the camera';}
+
+  const wsel=vbG('pdWardrobe');
+  let wClause='';
+  if(wsel==='Keep reference outfit'){wClause='Keep the clothing from the reference image unchanged. ';}
+  else if(wsel==='Custom…'){const wc=vbG('pdWardrobeCustom').trim();if(wc)wClause='Dress the subject in '+wc+', with natural fabric texture and folds. ';}
+  else{wClause='Dress the subject in '+wsel.toLowerCase()+', with natural fabric texture and folds. ';}
+
+  const bsel=vbG('pdBg');
+  let bClause='';
+  if(bsel==='Keep reference background'){bClause='Keep the background from the reference image unchanged. ';}
+  else if(bsel==='Custom…'){const bc=vbG('pdBgCustom').trim();if(bc)bClause='Set the scene in '+bc+'. ';}
+  else{bClause='Set the scene in a '+bsel.toLowerCase()+'. ';}
+
+  const labelSharp=document.getElementById('pdLabelSharp').checked;
+  const frontFacing=document.getElementById('pdFrontFacing').checked;
+  const kind=(pdType==='bottle')?'bottle':'pouch';
+  let labelClause='';
+  if(frontFacing)labelClause+='The front of the '+kind+' faces the camera with the label fully visible. ';
+  if(labelSharp)labelClause+='Keep all packaging text sharp, correctly spelled, undistorted and clearly legible, with the artwork and logo reproduced accurately. ';
+
+  return 'Use '+ref+' as the main subject and preserve the person\'s exact facial identity, hairstyle, body shape, skin tone and recognizable features with maximum likeness accuracy. '
+    +'Frame the shot as a '+shot+'. '
+    +'The subject is '+hold+' '+product+'. '
+    +'Scale is critical: the '+kind+' is '+pdSize+', shown at true real-world size in correct proportion to the person\'s hand, head and body. It is a small handheld item — it must NOT be oversized, must NOT be larger than the person\'s head, must NOT dominate or fill the frame, and the hand should comfortably wrap around it. '
+    +labelClause
+    +'Their expression is a '+expr+', looking toward the camera. '
+    +'The hand grips the '+kind+' naturally with the correct number of fingers and realistic contact, with no warped, floating or distorted packaging. '
+    +wClause
+    +bClause
+    +'Ultra-realistic photography with authentic human skin texture, natural imperfections, realistic clothing folds, accurate lighting physics, detailed eyes, realistic hair strands, true-to-life colors, natural shadows, sharp focus and clean product presentation. '
+    +'Captured as if photographed on an '+cam+', with natural HDR, realistic dynamic range, crisp textures and flagship smartphone image quality. '
+    +'The image must look like a genuine photograph, not AI-generated artwork. '
+    +'Aspect ratio '+aspect+'. '
+    +'Avoid: cartoon, illustration, 3d render, cgi, plastic skin, deformed hands, extra fingers, duplicated product, warped or misspelled packaging text, blurry label, oversized product, giant product, product larger than the head, product filling the frame, wrong scale, miniature product, watermark, oversaturated colors, fake skin texture.';
+}
+function vbProductUI(){
+  vbPdWardrobeToggle();vbPdBgToggle();
+  const hc=document.getElementById('pdHoldCustomWrap');if(hc)hc.style.display=(vbG('pdHold')==='Custom…')?'flex':'none';
+  const pv=document.getElementById('pdTextPreview');if(pv)pv.textContent=vbProductText();
+}
+/* ============ END PRODUCT HOLD ============ */
+
+function vbComputeClips(){
+  var text=vbG('scriptText').replace(/\s+/g,' ').trim();
+  var pace=+vbG('pace')||2.7, secs=+vbG('secs')||8;
+  var budget=Math.max(6,Math.round(secs*pace));
+  var sents=text.match(/[^.!?]+[.!?]+|\S[^.!?]*$/g)||[];
+  var clips=[],cur='',cw=0;
+  sents.forEach(function(s){s=s.trim();if(!s)return;var w=s.split(' ').length;
+    if(cw&&cw+w>budget){clips.push(cur.trim());cur='';cw=0;}
+    cur=(cur?cur+' ':'')+s;cw+=w;if(cw>=budget){clips.push(cur.trim());cur='';cw=0;}});
+  if(cur.trim())clips.push(cur.trim());
+  return {clips:clips,words:text?text.split(' ').length:0,pace:pace};
+}
+function vbSeg(){
+  var secs=+vbG('secs'),pace=+vbG('pace');
+  document.getElementById('secsRo').textContent=secs+'s';
+  document.getElementById('paceRo').textContent=pace.toFixed(1)+' w/s';
+  var c=vbComputeClips(),clips=c.clips;
+  var total=0;var rows=clips.map(function(cl,i){var w=cl.split(' ').length;var sec=Math.max(1,Math.round(w/pace));total+=sec;
+    return '<div class="vb-clip"><span class="vb-cnum">C'+(i+1)+' · ~'+sec+'s</span><span class="vb-ctxt">'+cl.replace(/</g,'&lt;')+'</span></div>';}).join('');
+  document.getElementById('clipPreview').innerHTML=rows||'<div style="font-size:12px;color:var(--color-text-secondary);padding:8px 0">Paste a script above.</div>';
+  document.getElementById('mClips').textContent=clips.length;document.getElementById('mDur').textContent='~'+total+'s';document.getElementById('mWords').textContent=c.words;
+  vbRenderVideo();
+  return {clips:clips,total:total,words:c.words};
+}
+function vbVideoBlock(label,jsonStr){
+  return '<div class="vb-prev"><div class="vb-prev-head">'+label
+    +' <button class="vb-mini" onclick="vbCopyPrev(this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button></div>'
+    +'<div class="vb-json">'+jsonStr.replace(/</g,'&lt;')+'</div></div>';
+}
+var vbVideoPage=0;
+function vbPagerHTML(i,n,fn){
+  return '<div class="vb-pager">'
+    +'<button class="vb-mini" '+(i===0?'disabled':'')+' onclick="'+fn+'(-1)"><i class="ti ti-chevron-left" aria-hidden="true"></i> Prev</button>'
+    +'<span class="vb-pageinfo">Clip '+(i+1)+' of '+n+'</span>'
+    +'<button class="vb-mini" '+(i===n-1?'disabled':'')+' onclick="'+fn+'(1)">Next <i class="ti ti-chevron-right" aria-hidden="true"></i></button>'
+    +'</div>';
+}
+function vbRenderVideo(){
+  var out=document.getElementById('videoJsonOut');if(!out)return;
+  if(vbModes.mode==='single'){
+    var line=vbG('scriptOne').trim();
+    out.innerHTML=vbVideoBlock('Clip',vbJson(line||'[INSERT SCRIPT HERE]'));return;
+  }
+  var c=vbComputeClips();
+  if(!c.clips.length){vbVideoPage=0;out.innerHTML=vbVideoBlock('Template — paste a script',vbJson('[INSERT SCRIPT HERE]'));return;}
+  var n=c.clips.length;
+  if(vbVideoPage>n-1)vbVideoPage=n-1;
+  if(vbVideoPage<0)vbVideoPage=0;
+  var i=vbVideoPage,t=c.clips[i];
+  var w=t.split(' ').length,sec=Math.max(1,Math.round(w/(c.pace||2.7)));
+  var pager=n>1?vbPagerHTML(i,n,'vbVideoNav'):'';
+  out.innerHTML=pager+vbVideoBlock('Clip '+(i+1)+' · ~'+sec+'s',vbJson(t));
+}
+function vbVideoNav(d){
+  var c=vbComputeClips(),n=c.clips.length||1;
+  vbVideoPage=Math.max(0,Math.min(n-1,vbVideoPage+d));
+  vbRenderVideo();
+}
+function vbVideoAllText(){
+  if(vbModes.mode==='single'){var line=vbG('scriptOne').trim();return vbJson(line||'[INSERT SCRIPT HERE]');}
+  var c=vbComputeClips();
+  if(!c.clips.length)return vbJson('[INSERT SCRIPT HERE]');
+  return c.clips.map(function(t,i){return 'Clip '+(i+1)+':\n'+vbJson(t);}).join('\n\n');
+}
+function vbCopyAllVideo(btn){vbCopyText(vbVideoAllText(),btn);}
+
+/* ---- clipboard + toast ---- */
+function vbToast(msg){
+  var t=document.getElementById('vbToast');
+  if(!t){t=document.createElement('div');t.id='vbToast';t.className='vb-toast';document.body.appendChild(t);}
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show');},1600);
+}
+function vbExecCopy(text){
+  try{var ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.top='-1000px';document.body.appendChild(ta);ta.select();var ok=document.execCommand('copy');document.body.removeChild(ta);return ok;}catch(e){return false;}
+}
+function vbWriteClipboard(text){
+  return new Promise(function(res){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){res(true);},function(){res(vbExecCopy(text));});
+    }else{res(vbExecCopy(text));}
+  });
+}
+function vbCopyText(text,btn){
+  vbWriteClipboard(text).then(function(ok){
+    vbToast(ok?'Copied to clipboard':'Copy failed — select manually');
+    if(btn){var i=btn.querySelector('i');var pi=i?i.className:'';btn.classList.add('ok');if(i)i.className='ti ti-check';
+      setTimeout(function(){btn.classList.remove('ok');if(i)i.className=pi;},1400);}
+  });
+}
+function vbCopyId(id,btn){var el=document.getElementById(id);if(el)vbCopyText(el.textContent,btn);}
+function vbCopyPrev(btn){var w=btn.closest('.vb-prev');if(!w)return;var c=w.querySelector('.vb-json,.vb-plain');if(c)vbCopyText(c.textContent,btn);}
+/* big Send/Copy button copy with inline flash */
+function vbCopy(text){
+  var btn=document.getElementById('vbSendBtn'),txt=document.getElementById('vbSendTxt'),ic=document.getElementById('vbSendIcon');
+  vbWriteClipboard(text).then(function(ok){
+    vbToast(ok?'Copied to clipboard':'Copy failed — select manually');
+    if(ok&&btn&&txt&&ic){var p=txt.textContent,pic=ic.className;btn.classList.add('is-copied');txt.textContent='Copied to clipboard';ic.className='ti ti-check';
+      setTimeout(function(){txt.textContent=p;ic.className=pic;btn.classList.remove('is-copied');},1700);}
+  });
+}
+/* send to chat host, or copy to clipboard if no host is present */
+function vbDispatch(msg){
+  if(typeof sendPrompt==='function'){sendPrompt(msg);}
+  else{vbCopy(msg);}
+}
+function vbSend(){
+  if(vbModes.mode==='image'){
+    const msg='Build the image-generation JSON prompt below for my uploaded reference photo. Output the JSON exactly as written — do not add, remove, or rename any keys. No preamble.\n\n'+JSON.stringify(vbImgJsonObj(),null,2);
+    vbDispatch(msg);return;
+  }
+  if(vbModes.mode==='product'){
+    vbCopy(vbProductText());return;
+  }
+  if(vbModes.mode==='hook'){
+    const clips=vbHookClips();
+    const msg=
+'Act as my Google Flow / Veo agent for a two-person dialogue hook. Build one video clip per JSON object below, in order, so that cutting between them creates a natural multi-camera conversation.\n\n'+
+'OUTPUT RULES:\n'+
+'- Output each clip\'s JSON exactly as written — do not add, remove, or rename any keys.\n'+
+'- Each clip is a single continuous shot from the camera angle in its "camera" field; the multi-camera effect comes from cutting between clips, not from moving the camera inside a clip.\n'+
+'- Keep each speaker\'s accent locked and consistent across every clip they appear in.\n'+
+'- In each clip only the active speaker talks; the other person listens naturally and does not speak.\n'+
+'- Number each clip (Clip 1, Clip 2, ...) with its full JSON object underneath. No preamble, no commentary.\n\n'+
+'CLIPS:\n'+JSON.stringify(clips,null,2);
+    vbDispatch(msg);return;
+  }
+  if(vbModes.mode==='single'){
+    const line=vbG('scriptOne').trim();
+    const msg='Build ONE Google Flow / Veo clip using the EXACT JSON prompt below. Output the JSON exactly as written — do not add, remove, or rename any keys, and do not change any value except "dialogue". No preamble.\n\n'+vbJson(line||'[INSERT SCRIPT HERE]');
+    vbDispatch(msg);return;
+  }
+  const seg=vbSeg();
+  const msg=
+'Act as my Google Flow / Veo agent. Below are '+seg.clips.length+' ready-made clip prompts in order. Generate one continuous clip per JSON object exactly as written — do not add, remove, or rename any keys or change any value — then cut the clips together in sequence.\n'+
+'No preamble, no commentary.\n\n'+vbVideoAllText();
+  vbDispatch(msg);
+}
+/* ============ PERSISTENCE ============ */
+var vbReady=false,_vbSaveT=null;
+function vbCollect(){
+  var data={mode:vbModes.mode,fields:{},checks:{},comps:[],pd:vbCurrentPdPreset,hook:[]};
+  document.querySelectorAll('input,select,textarea').forEach(function(el){
+    if(!el.id)return;
+    if(el.type==='checkbox')data.checks[el.id]=el.checked;
+    else data.fields[el.id]=el.value;
+  });
+  document.querySelectorAll('#imgCompChips .vb-chip.on-purple').forEach(function(c){data.comps.push(c.getAttribute('data-c'));});
+  document.querySelectorAll('#hkTurns .hk-turn').forEach(function(row){
+    data.hook.push({
+      spk:(row.querySelector('.hk-speaker')||{}).value||'A',
+      cam:(row.querySelector('.hk-cam')||{}).value||'Focus on the speaker',
+      camCustom:(row.querySelector('.hk-cam-custom')||{}).value||'',
+      line:(row.querySelector('.hk-line')||{}).value||'',
+      emotion:(row.querySelector('.hk-emotion')||{}).value||'',
+      reaction:(row.querySelector('.hk-reaction')||{}).value||''
+    });
+  });
+  return data;
+}
+function vbApply(data){
+  if(!data)return;
+  Object.keys(data.fields||{}).forEach(function(id){var el=document.getElementById(id);if(!el||el.type==='checkbox')return;var v=data.fields[id];if(v===''||v==null)return;el.value=v;});
+  Object.keys(data.checks||{}).forEach(function(id){var el=document.getElementById(id);if(el)el.checked=!!data.checks[id];});
+  document.querySelectorAll('#imgCompChips .vb-chip').forEach(function(c){c.classList.toggle('on-purple',(data.comps||[]).indexOf(c.getAttribute('data-c'))>-1);});
+  if(data.pd&&PD_PRESETS[data.pd]){vbCurrentPdPreset=data.pd;pdType=PD_PRESETS[data.pd].type;pdSize=PD_PRESETS[data.pd].size;}
+  document.querySelectorAll('#pdProductChips .vb-chip').forEach(function(c){c.classList.toggle('on-purple',c.getAttribute('data-k')===vbCurrentPdPreset);});
+  if(data.hook){
+    var wrap=document.getElementById('hkTurns');
+    if(wrap){wrap.innerHTML='';
+      data.hook.forEach(function(t){
+        vbHookAddTurn(t.spk,t.cam,t.line,t.emotion,t.reaction);
+        var row=wrap.lastElementChild;
+        if(row&&t.cam==='Custom…'){var cc=row.querySelector('.hk-cam-custom');if(cc){cc.style.display='block';cc.value=t.camCustom||'';}}
+      });
+    }
+  }
+  vbSetMode(data.mode||'script');
+  vbAllToggles();vbSeg();vbImgUI();vbHookUI();vbProductUI();vbJsonUI();
+}
+function vbAllToggles(){
+  vbBgToggle();vbWardrobeToggle();vbShotToggle();vbPoseToggle();vbActivityToggle();vbCompToggle();
+  vbPdWardrobeToggle();vbPdBgToggle();
+  var hc=document.getElementById('pdHoldCustomWrap');if(hc)hc.style.display=(vbG('pdHold')==='Custom…')?'flex':'none';
+}
+function vbSave(){if(!vbReady)return;try{localStorage.setItem('pb_state',JSON.stringify(vbCollect()));}catch(e){}}
+function vbSaveDebounced(){clearTimeout(_vbSaveT);_vbSaveT=setTimeout(vbSave,250);}
+function vbLoad(){
+  var raw=null;try{raw=localStorage.getItem('pb_state');}catch(e){return false;}
+  if(!raw)return false;
+  var data;try{data=JSON.parse(raw);}catch(e){return false;}
+  try{vbApply(data);return true;}catch(e){return false;}
+}
+function vbReset(){try{localStorage.removeItem('pb_state');}catch(e){}location.reload();}
+
+/* ============ INIT ============ */
+document.getElementById('hkAccentA').innerHTML=vbOpts(HK_ACCENTS,'Jamaican');
+document.getElementById('hkAccentB').innerHTML=vbOpts(HK_ACCENTS,'General American');
+document.getElementById('vAccent').innerHTML=vbOpts(HK_ACCENTS,'Jamaican');
+vbHookAddTurn('A','Focus on the speaker','Yuh ever wonder why yuh breath still nuh fresh after yuh brush?','Curious','Leaning in, interested');
+vbHookAddTurn('B','Focus on the speaker','Wait, so brushing alone isn\'t enough?','Surprised','Skeptical, raised eyebrow');
+vbHookAddTurn('A','Over-the-shoulder toward the speaker','Exactly. Mek mi show yuh di one ting weh change everyting.','Confident','Leaning in, interested');
+vbHookAddTurn('B','Two-shot (both in frame)','Okay, I\'m listening — show me.','Excited','Nodding in agreement');
+vbPdPreset('crwn',document.querySelector('#pdProductChips .vb-chip[data-k="crwn"]'));
+vbAllToggles();vbSeg();vbImgUI();vbHookUI();vbProductUI();vbJsonUI();
+vbSetMode((document.getElementById('modeSelect')||{}).value||'script');
+vbLoad();
+vbReady=true;
+document.addEventListener('input',vbSaveDebounced,true);
+document.addEventListener('change',vbSaveDebounced,true);
+
+</script>
+
+</main>
+<footer class="vb-footer">2026 night</footer>
+</body>
+</html>

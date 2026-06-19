@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Builder</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1 class="sr-only">Prompt Builder</h1>
+
+<header class="vb-header">
+  <div class="vb-header-inner">
+    <div class="vb-brand"><i class="ti ti-wand" aria-hidden="true"></i> Prompt Builder</div>
+    <div class="vb-mode">
+      <button class="vb-mini" onclick="vbReset()" title="Reset all settings"><i class="ti ti-rotate" aria-hidden="true"></i> Reset</button>
+      <span>Mode</span>
+      <div class="vb-mode-select">
+        <select id="modeSelect" aria-label="Mode" onchange="vbSetMode(this.value)">
+          <option value="script">Body Script</option>
+          <option value="single">Clip</option>
+          <option value="hook">Hook</option>
+          <option value="image">Image</option>
+          <option value="fixer">Image Fixer</option>
+          <option value="product">Product</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="vb-wrap">
+
+  <div class="vb-card vbm m-script m-single" id="charCard">
+    <div class="vb-st"><i class="ti ti-user-circle" style="font-size:18px" aria-hidden="true"></i> Character <span class="vb-badge">likeness locked to reference</span></div>
+    <div class="vb-fr"><label>Character</label><input type="text" id="character" value="60-year-old Jamaican elder" oninput="vbJsonUI()"></div>
+    <div class="vb-fr" style="margin-top:8px"><label>Image reference (locked)</label><input type="text" id="imgRef" value="USE PROVIDED IMAGE REFERENCE EXACTLY" oninput="vbJsonUI()"></div>
+  </div>
+
+  <div class="vb-card vbm m-script m-single" id="voiceCard">
+    <div class="vb-st"><i class="ti ti-microphone-2" style="font-size:18px" aria-hidden="true"></i> Voice <span class="vb-badge pink" id="vAccentBadge">accent locked · max</span></div>
+    <div class="vb-fr"><label>Accent</label><select id="vAccent" onchange="vbJsonUI()"></select></div>
+    <div class="vb-fr" id="vAccentCustomWrap" style="display:none;margin-top:8px"><label>Custom accent</label><input type="text" id="vAccentCustom" value="" placeholder="e.g. Trinidadian, Brooklyn New York, Lagos Nigerian…" oninput="vbJsonUI()"></div>
+    <div class="vb-row" style="margin-top:10px"><label>Accent strength</label><input type="range" id="vAccentPct" min="0" max="100" step="5" value="100" oninput="vbJsonUI()"><span class="ro" id="vAccentPctRo">100%</span></div>
+    <div class="vb-grid2" style="margin-top:8px">
+      <div class="vb-fr"><label>Speech speed</label><input type="text" id="vspeed" value="moderately fast" oninput="vbJsonUI()"></div>
+      <div class="vb-fr"><label>Pace</label><input type="text" id="vpace" value="natural conversational pace" oninput="vbJsonUI()"></div>
+    </div>
+    <div class="vb-grid2" style="margin-top:8px">
+      <div class="vb-fr"><label>Clarity</label><input type="text" id="vclarity" value="very clear and easy to understand" oninput="vbJsonUI()"></div>
+      <div class="vb-fr"><label>Tone</label><input type="text" id="vtone" value="friendly, confident, energetic, conversational" oninput="vbJsonUI()"></div>
+    </div>
+    <div class="vb-lbl" style="margin-top:12px">Accent lock (baked into every clip)</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-check" aria-hidden="true"></i><span id="vLockName">Accent locked</span></span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Accent priority above all else</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No drift, first word to last</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Never slips into another accent</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Clarity kept with the accent</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Native-speaker delivery</span>
+    </div>
+  </div>
+
+  <div class="vb-card vbm m-script" id="scriptCard">
+    <div class="vb-st"><i class="ti ti-file-text" style="font-size:18px" aria-hidden="true"></i> Body Script</div>
+    <div class="vb-fr"><textarea id="scriptText" rows="9" oninput="vbSeg()">Mi a go tell yuh sit'n weh change mi life. If yuh have bad breath, do dis one ting an watch how it work. No matter how much yuh brush or use mouthwash, if di smell keep comin back, yuh need dis formula. It natural, it safe, an it proven fi get rid a di odour. Yuh might not have bad breath right now, but one day yuh a go thank yuhself fi save dis. Tek 200 millilitre a warm water, add one teaspoon a baking soda, den squeeze half a lemon. Add one teaspoon a salt fi clean yuh tongue an gums good good. Stir it up an rinse yuh mouth fi 30 second. Nuh swallow it. Repeat morning an night fi fresh breath every day. Share dis wid somebody weh need it. Inna di next video mi a go show yuh wi herbal rinse weh keep yuh breath fresh fi 24 hour. Comment yes if yuh interested, an follow mi fi more natural tips.</textarea></div>
+    <div class="vb-div"></div>
+    <div class="vb-lbl">Clip pacing</div>
+    <div class="vb-row"><label>Seconds per clip</label><input type="range" id="secs" min="4" max="8" step="1" value="8" oninput="vbSeg()"><span class="ro" id="secsRo">8s</span></div>
+    <div class="vb-row"><label>Speaking pace</label><input type="range" id="pace" min="2" max="3.5" step="0.1" value="2.7" oninput="vbSeg()"><span class="ro" id="paceRo">2.7 w/s</span></div>
+    <div class="vb-grid3" style="margin-top:12px">
+      <div class="vb-metric"><div class="n" id="mClips">–</div><div class="l">clips</div></div>
+      <div class="vb-metric"><div class="n" id="mDur">–</div><div class="l">est. total</div></div>
+      <div class="vb-metric"><div class="n" id="mWords">–</div><div class="l">words</div></div>
+    </div>
+    <div class="vb-lbl" style="margin-top:16px">Rough cut preview <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px">(re-cut on natural beats when finalizing)</span></div>
+    <div id="clipPreview" style="margin-top:4px"></div>
+  </div>
+
+  <div class="vb-card vbm m-single" id="singleCard">
+    <div class="vb-st"><i class="ti ti-microphone" style="font-size:18px" aria-hidden="true"></i> Clip</div>
+    <div class="vb-fr"><label>Dialogue for this clip</label><textarea id="scriptOne" rows="3" placeholder="One line of dialogue for a single clip..."></textarea></div>
+  </div>
+
+  <div class="vb-card vbm m-hook" id="hookCard">
+    <div class="vb-st"><i class="ti ti-users" style="font-size:18px" aria-hidden="true"></i> Speakers <span class="vb-badge blue">two-person dialogue · per-line accent &amp; camera</span></div>
+
+    <div class="vb-lbl">Person A</div>
+    <div class="vb-grid2">
+      <div class="vb-fr"><label>Label</label><input type="text" id="hkNameA" value="Person A" oninput="vbHookUI()"></div>
+      <div class="vb-fr"><label>Accent</label><select id="hkAccentA" onchange="vbHookUI()"></select></div>
+    </div>
+    <div class="vb-fr" id="hkAccentACustomWrap" style="display:none;margin-top:8px"><label>Custom accent (Person A)</label><input type="text" id="hkAccentACustom" value="" placeholder="e.g. Trinidadian, Brooklyn New York, Lagos Nigerian…" oninput="vbHookUI()"></div>
+    <div class="vb-fr" style="margin-top:8px"><label>Character (Person A)</label><input type="text" id="hkCharA" value="60-year-old Jamaican elder" oninput="vbHookUI()"></div>
+    <div class="vb-row" style="margin-top:8px"><label>Accent strength</label><input type="range" id="hkPctA" min="0" max="100" step="5" value="100" oninput="vbHookUI()"><span class="ro" id="hkPctARo">100%</span></div>
+    <div class="vb-fr" style="margin-top:4px"><label>Reference (Person A)</label><input type="text" id="hkRefA" value="USE PERSON A REFERENCE IMAGE EXACTLY" oninput="vbHookUI()"></div>
+
+    <div class="vb-div"></div>
+    <div class="vb-lbl">Person B</div>
+    <div class="vb-grid2">
+      <div class="vb-fr"><label>Label</label><input type="text" id="hkNameB" value="Person B" oninput="vbHookUI()"></div>
+      <div class="vb-fr"><label>Accent</label><select id="hkAccentB" onchange="vbHookUI()"></select></div>
+    </div>
+    <div class="vb-fr" id="hkAccentBCustomWrap" style="display:none;margin-top:8px"><label>Custom accent (Person B)</label><input type="text" id="hkAccentBCustom" value="" placeholder="e.g. Southern US, London Cockney, Indian…" oninput="vbHookUI()"></div>
+    <div class="vb-fr" style="margin-top:8px"><label>Character (Person B)</label><input type="text" id="hkCharB" value="man in his early 30s" oninput="vbHookUI()"></div>
+    <div class="vb-row" style="margin-top:8px"><label>Accent strength</label><input type="range" id="hkPctB" min="0" max="100" step="5" value="100" oninput="vbHookUI()"><span class="ro" id="hkPctBRo">100%</span></div>
+    <div class="vb-fr" style="margin-top:4px"><label>Reference (Person B)</label><input type="text" id="hkRefB" value="USE PERSON B REFERENCE IMAGE EXACTLY" oninput="vbHookUI()"></div>
+  </div>
+
+  <div class="vb-card vbm m-hook">
+    <div class="vb-st"><i class="ti ti-messages" style="font-size:18px" aria-hidden="true"></i> Dialogue <span class="vb-badge blue">per-line speaker, camera &amp; text</span></div>
+    <div class="vb-lbl">Lines <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px">— each line gets a speaker, a camera shot, and the spoken text</span></div>
+    <div id="hkTurns"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="vb-send" style="margin-top:0;flex:1" onclick="vbHookAddTurn('A')"><i class="ti ti-plus" style="font-size:14px" aria-hidden="true"></i> Line for A</button>
+      <button class="vb-send" style="margin-top:0;flex:1" onclick="vbHookAddTurn('B')"><i class="ti ti-plus" style="font-size:14px" aria-hidden="true"></i> Line for B</button>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:16px">Camera options available per line</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-point" aria-hidden="true"></i>Focus on the speaker</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Close-up on the speaker</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Medium shot on the speaker</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Over-the-shoulder toward speaker</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Reaction shot on the listener</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Two-shot (both in frame)</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Wide establishing shot</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Custom camera shot</span>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">Locked guarantees (per clip)</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-check" aria-hidden="true"></i>Each speaker's accent stays locked</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Only the active speaker talks</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Listener reacts naturally, silent</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Exact likeness from reference</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Reference background preserved</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>One continuous shot per clip</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No move within a clip; cut to switch</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No captions / on-screen text</span>
+    </div>
+
+    <div class="vb-st" style="margin-top:16px"><i class="ti ti-code" style="font-size:18px" aria-hidden="true"></i> JSON clips preview <span class="vb-badge">per clip</span><button class="vb-mini" style="margin-left:auto" onclick="vbCopyAllHook(this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy all</button></div>
+    <div id="hkJsonOut"></div>
+  </div>
+
+  <div class="vb-card vbm m-image" id="imageCard">
+    <div class="vb-st"><i class="ti ti-photo" style="font-size:18px" aria-hidden="true"></i> Image <span class="vb-badge blue">identity locked · scene · company builder</span></div>
+
+    <div class="vb-lbl">Reference &amp; render controls</div>
+    <div class="vb-row"><label>Reference strength</label><input type="range" id="imgStrength" min="0.6" max="1" step="0.01" value="0.95" oninput="vbImgUI()"><span class="ro" id="imgStrengthRo">0.95</span></div>
+    <div class="vb-row"><label>Guidance scale</label><input type="range" id="imgGuid" min="1" max="15" step="0.5" value="9" oninput="vbImgUI()"><span class="ro" id="imgGuidRo">9</span></div>
+    <div class="vb-row"><label>Steps</label><input type="range" id="imgSteps" min="20" max="60" step="1" value="50" oninput="vbImgUI()"><span class="ro" id="imgStepsRo">50</span></div>
+
+
+  </div>
+
+  <div class="vb-card vbm m-image">
+    <div class="vb-st"><i class="ti ti-mountain" style="font-size:18px" aria-hidden="true"></i> Scene</div>
+    <div class="vb-lbl">Background</div>
+    <div class="vb-fr"><select id="imgBg" onchange="vbBgToggle();vbImgUI()">
+      <option>Random (from pool)</option>
+      <option>Modern kitchen</option>
+      <option>Living room</option>
+      <option>Porch</option>
+      <option>Backyard</option>
+      <option>Beach house</option>
+      <option>Office</option>
+      <option>City street</option>
+      <option>Suburban home</option>
+      <option>Recording studio</option>
+      <option>Luxury apartment</option>
+      <option>Countryside home</option>
+      <option>Rooftop terrace</option>
+      <option>Café</option>
+      <option>Park</option>
+      <option>Community center</option>
+      <option>Cozy bedroom</option><option>Dining room</option><option>Home gym</option><option>Garage</option><option>Bathroom vanity</option><option>Walk-in closet</option><option>Sunlit kitchen</option><option>Rustic farmhouse kitchen</option><option>Industrial loft</option><option>Minimalist studio apartment</option><option>Living room with fireplace</option><option>Bookstore</option><option>Public library</option><option>Coffee roastery</option><option>Restaurant interior</option><option>Fine-dining restaurant</option><option>Bar</option><option>Pub</option><option>Cocktail lounge</option><option>Nightclub</option><option>Hotel lobby</option><option>Hotel room</option><option>Spa</option><option>Barbershop</option><option>Hair salon</option><option>Nail salon</option><option>Clothing boutique</option><option>Grocery store</option><option>Supermarket aisle</option><option>Pharmacy</option><option>Farmers market</option><option>Shopping mall</option><option>Bakery</option><option>Florist shop</option><option>Pet store</option><option>Art studio</option><option>Music studio booth</option><option>Podcast studio</option><option>Conference room</option><option>Coworking space</option><option>Classroom</option><option>University lecture hall</option><option>Doctor's office</option><option>Dental clinic</option><option>Hospital room</option><option>Science laboratory</option><option>TV studio set</option><option>Green screen studio</option><option>White cyclorama studio</option><option>Black studio backdrop</option><option>Greenhouse</option><option>Vegetable garden</option><option>Flower garden</option><option>Vineyard</option><option>Orchard</option><option>Farm field</option><option>Barn</option><option>Ranch stable</option><option>Forest trail</option><option>Mountain overlook</option><option>Desert landscape</option><option>Snowy landscape</option><option>Lakeside dock</option><option>Riverbank</option><option>Waterfall</option><option>Tropical beach</option><option>Beach boardwalk</option><option>Poolside</option><option>Yacht deck</option><option>Sailboat</option><option>Marina</option><option>Cliffside coast</option><option>City skyline at night</option><option>European old town street</option><option>Cobblestone alley</option><option>Parisian cafe terrace</option><option>Tokyo street at night</option><option>Street food market</option><option>Gas station</option><option>Subway platform</option><option>Train interior</option><option>Airport terminal</option><option>Airplane cabin</option><option>Car interior</option><option>Bus interior</option><option>Stadium</option><option>Boxing gym</option><option>Yoga studio</option><option>Dance studio</option><option>Basketball court</option><option>Soccer field</option><option>Tennis court</option><option>Golf course</option><option>Ski lodge</option><option>Campsite</option><option>Cabin in the woods</option><option>Penthouse balcony</option><option>Infinity pool villa</option><option>Wine cellar</option><option>Art gallery</option><option>Museum hall</option><option>Theater stage</option><option>Church interior</option><option>Temple</option><option>Garden gazebo</option><option>Backyard BBQ</option><option>Patio dining</option><option>Wedding venue</option><option>Construction site</option><option>Auto repair shop</option><option>Warehouse</option><option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="imgBgCustomWrap" style="display:none;margin-top:8px"><label>Custom background (anything)</label><input type="text" id="imgBgCustom" value="" placeholder="e.g. cozy bookstore, mountain trail, jazz club, market stall…" oninput="vbImgUI()"></div>
+
+    <div class="vb-lbl" style="margin-top:14px">Wardrobe</div>
+    <div class="vb-fr"><select id="imgWardrobe" onchange="vbWardrobeToggle();vbImgUI()">
+      <option>Keep reference outfit</option>
+      <option>Casual everyday wear</option>
+      <option>Smart-casual outfit</option>
+      <option>Business attire</option>
+      <option>Formal tailored suit</option>
+      <option>Light summer clothing</option>
+      <option>Athleisure activewear</option>
+      <option>Traditional cultural attire</option>
+      <option>Cozy loungewear</option>
+      <option>Modern streetwear</option>
+      <option>Medical white coat</option>
+      <option>Chef's white uniform</option>
+      <option>Rustic farmer's workwear</option>
+      <option>Denim jacket and white tee</option><option>Hoodie and jeans</option><option>Leather jacket and jeans</option><option>Bomber jacket</option><option>Trench coat</option><option>Wool overcoat</option><option>Winter parka</option><option>Puffer jacket</option><option>Three-piece suit</option><option>Tuxedo</option><option>Cocktail dress</option><option>Evening gown</option><option>Sundress</option><option>Maxi dress</option><option>Blouse and skirt</option><option>Turtleneck sweater</option><option>Cardigan and slacks</option><option>Polo shirt and chinos</option><option>Henley shirt and jeans</option><option>Flannel shirt</option><option>Tank top and shorts</option><option>Gym tank and leggings</option><option>Running gear</option><option>Yoga outfit</option><option>Tracksuit</option><option>Basketball jersey</option><option>Football jersey</option><option>Soccer kit</option><option>Cycling kit</option><option>Swimwear</option><option>Bathrobe</option><option>Pajamas</option><option>Nurse scrubs</option><option>Surgeon scrubs</option><option>Police uniform</option><option>Firefighter gear</option><option>Military uniform</option><option>Pilot uniform</option><option>Flight attendant uniform</option><option>Hi-vis construction gear</option><option>Mechanic coveralls</option><option>Barista apron</option><option>Waiter uniform</option><option>Barber apron</option><option>Business-casual blazer</option><option>Power suit</option><option>Pencil skirt and blazer</option><option>Sari</option><option>Kimono</option><option>Hanbok</option><option>Dashiki</option><option>Kente attire</option><option>Abaya</option><option>Thobe</option><option>Kaftan</option><option>Western cowboy wear</option><option>Biker leathers</option><option>Hip-hop streetwear</option><option>Vintage 70s outfit</option><option>80s retro outfit</option><option>90s grunge</option><option>Preppy outfit</option><option>Linen beachwear</option><option>Raincoat and boots</option><option>Ski jacket and pants</option><option>Hiking gear</option><option>Safari outfit</option><option>Graduation gown</option><option>Wedding dress</option><option>Groom suit</option><option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="imgWardrobeCustomWrap" style="display:none;margin-top:8px"><label>Custom wardrobe (anything)</label><input type="text" id="imgWardrobeCustom" value="" placeholder="e.g. denim jacket and white tee, traditional kente, navy scrubs…" oninput="vbImgUI()"></div>
+
+
+  </div>
+
+  <div class="vb-card vbm m-image">
+    <div class="vb-st"><i class="ti ti-camera" style="font-size:18px" aria-hidden="true"></i> Framing</div>
+    <div class="vb-lbl">Camera shot &amp; pose</div>
+    <div class="vb-grid2">
+      <div class="vb-fr"><label>Shot / angle</label><select id="imgShot" onchange="vbShotToggle();vbImgUI()">
+        <option>Medium close-up</option>
+        <option>Close-up</option>
+        <option>Extreme close-up</option>
+        <option>Portrait headshot</option>
+        <option>Medium shot</option>
+        <option>Medium-wide shot</option>
+        <option>Wide shot</option>
+        <option>Full-body shot</option>
+        <option>Over-the-shoulder shot</option>
+        <option>Low-angle shot</option>
+        <option>High-angle shot</option>
+        <option>Eye-level shot</option>
+        <option>Three-quarter view</option>
+        <option>Profile shot</option>
+        <option>Custom…</option>
+      </select></div>
+      <div class="vb-fr"><label>Pose / position</label><select id="imgPose" onchange="vbPoseToggle();vbImgUI()">
+        <option>Standing</option>
+        <option>Sitting</option>
+        <option>Riding</option>
+        <option>Walking</option>
+        <option>Leaning casually</option>
+        <option>Kneeling</option>
+        <option>Crouching</option>
+        <option>Lying down</option>
+        <option>Standing, arms crossed</option>
+        <option>Standing, hands in pockets</option>
+        <option>Gesturing while speaking</option>
+        <option>Custom…</option>
+      </select></div>
+    </div>
+    <div class="vb-fr" id="imgShotCustomWrap" style="display:none;margin-top:8px"><label>Custom shot / angle</label><input type="text" id="imgShotCustom" value="" placeholder="e.g. dutch-angle waist-up, top-down flat lay, worm's-eye view…" oninput="vbImgUI()"></div>
+    <div class="vb-fr" id="imgPoseCustomWrap" style="display:none;margin-top:8px"><label>Custom pose / position</label><input type="text" id="imgPoseCustom" value="" placeholder="e.g. riding a bicycle, sitting on a porch step, mid-stride…" oninput="vbImgUI()"></div>
+
+    <div class="vb-lbl" style="margin-top:14px">Activity</div>
+    <div class="vb-fr"><select id="imgActivity" onchange="vbActivityToggle();vbImgUI()">
+      <option>None / just posing</option>
+      <option>Cooking</option>
+      <option>Eating a meal</option>
+      <option>Talking to the camera</option>
+      <option>Working at a desk</option>
+      <option>Exercising</option>
+      <option>Gardening</option>
+      <option>Shopping</option>
+      <option>Reading</option>
+      <option>Holding a product</option>
+      <option>Drinking coffee</option>
+      <option>Brewing coffee</option><option>Making a smoothie</option><option>Mixing a drink</option><option>Baking</option><option>Chopping vegetables</option><option>Washing dishes</option><option>Cleaning the house</option><option>Doing laundry</option><option>Setting the table</option><option>Pouring a drink</option><option>Tasting food</option><option>Grilling / BBQ</option><option>Meal prepping</option><option>Stretching</option><option>Doing yoga</option><option>Lifting weights</option><option>Running on a treadmill</option><option>Jogging outdoors</option><option>Cycling</option><option>Shadow boxing</option><option>Dancing</option><option>Jumping rope</option><option>Playing guitar</option><option>Playing piano</option><option>Singing into a mic</option><option>Recording a podcast</option><option>Filming a selfie video</option><option>Taking a selfie</option><option>Live streaming</option><option>Video call</option><option>Talking on the phone</option><option>Texting on phone</option><option>Typing on a laptop</option><option>Writing in a notebook</option><option>Sketching</option><option>Painting</option><option>Studying</option><option>Giving a presentation</option><option>Pointing at a chart</option><option>Counting money</option><option>Unboxing a package</option><option>Demonstrating a product</option><option>Applying skincare</option><option>Doing makeup</option><option>Brushing teeth</option><option>Styling hair</option><option>Shaving</option><option>Watering plants</option><option>Planting seeds</option><option>Harvesting vegetables</option><option>Walking a dog</option><option>Petting a cat</option><option>Feeding a pet</option><option>Holding a baby</option><option>Playing with kids</option><option>Carrying groceries</option><option>Browsing a store</option><option>Trying on clothes</option><option>Paying at a counter</option><option>Driving a car</option><option>Riding a bike</option><option>Relaxing on a couch</option><option>Sipping tea</option><option>Toasting with a glass</option><option>Laughing with friends</option><option>Meditating</option><option>Fishing</option><option>Hiking</option><option>Camping</option><option>Swimming</option><option>Sunbathing</option><option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="imgActivityCustomWrap" style="display:none;margin-top:8px"><label>Custom activity</label><input type="text" id="imgActivityCustom" value="" placeholder="e.g. mixing a herbal drink, watering plants, packing boxes…" oninput="vbImgUI()"></div>
+
+
+  </div>
+
+  <div class="vb-card vbm m-image">
+    <div class="vb-st"><i class="ti ti-users" style="font-size:18px" aria-hidden="true"></i> Companions</div>
+    <div class="vb-lbl">Companions <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px">— tap to combine any (none = alone)</span></div>
+    <div class="vb-chips" id="imgCompChips">
+      <div class="vb-chip" data-c="child" onclick="vbCompChip(this)">A child</div>
+      <div class="vb-chip" data-c="elderly person" onclick="vbCompChip(this)">An elderly person</div>
+      <div class="vb-chip" data-c="young man" onclick="vbCompChip(this)">A young man</div>
+      <div class="vb-chip" data-c="young woman" onclick="vbCompChip(this)">A young woman</div>
+      <div class="vb-chip" data-c="twin" onclick="vbCompChip(this)">A twin (50%)</div>
+      <div class="vb-chip" data-c="interviewer" onclick="vbCompChip(this)">Interviewer</div>
+      <div class="vb-chip" data-c="interviewer boom" onclick="vbCompChip(this)">Interviewer + boom mic</div>
+      <div class="vb-chip" data-c="custom" onclick="vbCompChip(this)">Custom…</div>
+    </div>
+    <div id="imgTwinWrap" style="display:none;margin-top:10px">
+      <div class="vb-row"><label>Twin age gap</label><input type="range" id="imgTwinGap" min="0" max="40" step="1" value="20" oninput="vbImgUI()"><span class="ro" id="imgTwinGapRo">20 yrs</span></div>
+      <div class="vb-fr"><label>Twin is</label><select id="imgTwinDir" onchange="vbImgUI()"><option>younger</option><option>older</option></select></div>
+    </div>
+    <div class="vb-fr" id="imgCompanionCustomWrap" style="display:none;margin-top:10px"><label>Custom companion</label><input type="text" id="imgCompanionCustom" value="" placeholder="e.g. two grandchildren, a small dog, a business partner…" oninput="vbImgUI()"></div>
+
+
+  </div>
+
+  <div class="vb-card vbm m-image">
+    <div class="vb-st"><i class="ti ti-adjustments" style="font-size:18px" aria-hidden="true"></i> Output</div>
+    <div class="vb-grid2">
+      <div class="vb-fr"><label>Camera simulation</label><input type="text" id="imgCam" value="iPhone 17 Pro" oninput="vbImgUI()"></div>
+      <div class="vb-fr"><label>Aspect ratio</label><select id="imgAspect" onchange="vbImgUI()"><option>9:16</option><option>16:9</option><option>1:1</option><option>4:5</option><option>3:4</option></select></div>
+    </div>
+    <label class="vb-check"><input type="checkbox" id="imgFlag" checked onchange="vbImgUI()">Require a visible United States flag in every image</label>
+
+    <div class="vb-lbl" style="margin-top:14px">Locked guarantees</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-check" aria-hidden="true"></i>Max likeness — face, hair, body, skin</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Photoreal, reads as a real photo</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Authentic skin texture, natural flaws</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Accurate lighting &amp; natural shadows</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Premium smartphone photography look</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Not AI artwork / no cartoon / no CGI</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Negative prompt strips deformities</span>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">Pool used when “Random” is selected</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-point" aria-hidden="true"></i>Kitchen · living room · porch</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Backyard · beach house · office</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>City street · suburban · studio</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Apartment · countryside · rooftop</span>
+      <span><i class="ti ti-point" aria-hidden="true"></i>Café · park · community center</span>
+    </div>
+
+    <div class="vb-st" style="margin-top:16px"><i class="ti ti-code" style="font-size:18px" aria-hidden="true"></i> JSON spec preview<button class="vb-mini" style="margin-left:auto" onclick="vbCopyId('imgJsonPreview',this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button></div>
+    <div class="vb-json" id="imgJsonPreview">—</div>
+  </div>
+
+  <!-- ============ NEW: PRODUCT HOLD (PLAIN TEXT) ============ -->
+  <div class="vb-card vbm m-product" id="productCard">
+    <div class="vb-st"><i class="ti ti-package" style="font-size:18px" aria-hidden="true"></i> Product <span class="vb-badge amber">plain-text image prompt</span></div>
+    <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:4px">Pick a product, refine the description, then copy a single <strong>plain-text</strong> prompt (no JSON) of your locked-identity subject holding it.</div>
+
+    <div class="vb-lbl" style="margin-top:16px">Product</div>
+    <div class="vb-chips" id="pdProductChips">
+      <div class="vb-chip on-purple" data-k="crwn" onclick="vbPdPreset('crwn',this)">CRWN Cocoa</div>
+      <div class="vb-chip" data-k="serene" onclick="vbPdPreset('serene',this)">Serene Herbs</div>
+      <div class="vb-chip" data-k="iron" onclick="vbPdPreset('iron',this)">Ironpaws</div>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">Subject reference note (identity locked)</div>
+    <div class="vb-fr"><input type="text" id="pdRef" value="USE THE PROVIDED REFERENCE IMAGE EXACTLY" oninput="vbProductUI()"></div>
+
+    <div class="vb-lbl" style="margin-top:14px">Product description (held in frame)</div>
+    <div class="vb-fr"><textarea id="pdProduct" rows="6" oninput="vbProductUI()">a matte black resealable stand-up foil pouch of CRWN Cocoa with a press-to-close zip top and a flat-bottom gusset; across the upper-middle a wide brushed gold-to-bronze metallic gradient band; on that band the lowercase black wordmark "crwn." with a small black crown resting on top of it, and to its right a small black circular "PREMIUM QUALITY" seal with a star/molecule emblem; below the band on the black body the gold headline "HIGH FLAVANOL COCOA"; a thin gold-outlined bar reading "FLAVANOLS & FLAVANOIDS"; a row of three white line icons with labels beneath them — a double up-chevron "NITRIC OXIDE", a running figure "CARDIO PERFORMANCE", and a heartbeat heart "HEART HEALTH"; a solid gold rounded bar reading "0 SUGAR | 20 CALORIES" in black; and near the bottom in white "30 SERVINGS | DIETARY SUPPLEMENT"; premium black-and-gold supplement design with a matte finish</textarea></div>
+    <label class="vb-check"><input type="checkbox" id="pdLabelSharp" checked onchange="vbProductUI()">Keep the product label sharp, accurate and legible</label>
+    <label class="vb-check"><input type="checkbox" id="pdFrontFacing" checked onchange="vbProductUI()">Product front faces the camera</label>
+
+    <div class="vb-lbl" style="margin-top:14px">How it's held</div>
+    <div class="vb-fr"><select id="pdHold" onchange="vbProductUI()">
+      <option>holding it up toward the camera at chest height</option>
+      <option>cradling it in both hands</option>
+      <option>presenting it forward on an open palm</option>
+      <option>holding it in one hand beside their face</option>
+      <option>resting it in one hand with the label toward the camera</option>
+      <option>gripping it casually in one hand at their side</option>
+      <option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="pdHoldCustomWrap" style="display:none;margin-top:8px"><label>Custom hold</label><input type="text" id="pdHoldCustom" value="" placeholder="e.g. pouring from it into a mug, holding two pouches…" oninput="vbProductUI()"></div>
+
+
+  </div>
+
+  <div class="vb-card vbm m-product">
+    <div class="vb-st"><i class="ti ti-adjustments" style="font-size:18px" aria-hidden="true"></i> Presentation</div>
+    <div class="vb-grid2">
+      <div class="vb-fr"><label>Shot / framing</label><select id="pdShot" onchange="vbProductUI()">
+        <option>Medium close-up</option>
+        <option>Close-up</option>
+        <option>Medium shot</option>
+        <option>Waist-up shot</option>
+        <option>Portrait headshot</option>
+        <option>Three-quarter view</option>
+      </select></div>
+      <div class="vb-fr"><label>Expression</label><select id="pdExpr" onchange="vbProductUI()">
+        <option>warm, friendly smile</option>
+        <option>confident and approachable</option>
+        <option>relaxed, neutral expression</option>
+        <option>looking at the camera mid-sentence</option>
+        <option>enthusiastic and upbeat</option>
+      </select></div>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">Wardrobe</div>
+    <div class="vb-fr"><select id="pdWardrobe" onchange="vbPdWardrobeToggle();vbProductUI()">
+      <option>Keep reference outfit</option>
+      <option>Casual everyday wear</option>
+      <option>Smart-casual outfit</option>
+      <option>Athleisure activewear</option>
+      <option>Business attire</option>
+      <option>Formal tailored suit</option><option>Three-piece suit</option><option>Tuxedo</option><option>Cocktail dress</option><option>Evening gown</option><option>Polo shirt and chinos</option><option>Henley shirt and jeans</option><option>Hoodie and jeans</option><option>Denim jacket and white tee</option><option>Turtleneck sweater</option><option>Cardigan and slacks</option><option>Gym tank and leggings</option><option>Running gear</option><option>Yoga outfit</option><option>Tracksuit</option><option>Linen beachwear</option><option>Medical white coat</option><option>Nurse scrubs</option><option>Chef whites</option><option>Barista apron</option><option>Business-casual blazer</option><option>Power suit</option><option>Sari</option><option>Kimono</option><option>Dashiki</option><option>Kente attire</option><option>Abaya</option><option>Thobe</option><option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="pdWardrobeCustomWrap" style="display:none;margin-top:8px"><label>Custom wardrobe</label><input type="text" id="pdWardrobeCustom" value="" placeholder="e.g. black gym tee, white linen shirt…" oninput="vbProductUI()"></div>
+
+    <div class="vb-lbl" style="margin-top:14px">Background</div>
+    <div class="vb-fr"><select id="pdBg" onchange="vbPdBgToggle();vbProductUI()">
+      <option>Keep reference background</option>
+      <option>Clean studio backdrop</option>
+      <option>Modern kitchen</option>
+      <option>Living room</option>
+      <option>Home gym</option>
+      <option>Bright neutral wall</option>
+      <option>White cyclorama studio</option><option>Black studio backdrop</option><option>Sunlit kitchen</option><option>Dining room</option><option>Cozy bedroom</option><option>Office desk</option><option>Coworking space</option><option>Cafe</option><option>Restaurant interior</option><option>Bar</option><option>Hotel room</option><option>Spa</option><option>Bathroom vanity</option><option>Walk-in closet</option><option>Boutique store</option><option>Pharmacy shelf</option><option>Supermarket aisle</option><option>Greenhouse</option><option>Vegetable garden</option><option>Backyard patio</option><option>Poolside</option><option>Tropical beach</option><option>Rooftop terrace</option><option>City street</option><option>Gym</option><option>Yoga studio</option><option>Wine cellar</option><option>Marble countertop</option><option>Wooden table top</option><option>Kitchen countertop</option><option>Bright neutral gradient</option><option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="pdBgCustomWrap" style="display:none;margin-top:8px"><label>Custom background</label><input type="text" id="pdBgCustom" value="" placeholder="e.g. sunlit countertop, outdoor patio…" oninput="vbProductUI()"></div>
+
+    <div class="vb-grid2" style="margin-top:14px">
+      <div class="vb-fr"><label>Camera simulation</label><input type="text" id="pdCam" value="iPhone 17 Pro" oninput="vbProductUI()"></div>
+      <div class="vb-fr"><label>Aspect ratio</label><select id="pdAspect" onchange="vbProductUI()"><option>9:16</option><option>4:5</option><option>1:1</option><option>16:9</option><option>3:4</option></select></div>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">Locked guarantees</div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-check" aria-hidden="true"></i>Exact likeness from reference photo</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Product label accurate &amp; readable</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Photoreal, reads as a real photo</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Natural skin texture &amp; lighting</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Natural hand grip, correct fingers</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No warped or unreadable packaging</span>
+    </div>
+
+    <div class="vb-st" style="margin-top:16px"><i class="ti ti-text-caption" style="font-size:18px" aria-hidden="true"></i> Plain-text prompt preview<button class="vb-mini" style="margin-left:auto" onclick="vbCopyId('pdTextPreview',this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button></div>
+    <div class="vb-plain" id="pdTextPreview">—</div>
+  </div>
+  <!-- ============ END PRODUCT HOLD ============ -->
+
+  <div class="vb-card vbm m-fixer">
+    <div class="vb-st"><i class="ti ti-sparkles" style="font-size:18px" aria-hidden="true"></i> Image Fixer <span class="vb-badge amber">realism / lighting pass</span></div>
+    <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:4px">Paste this into an image-edit / img2img model with your generated image. It keeps the content identical and repairs the realism — lighting, color, skin and the "AI look."</div>
+
+    <div class="vb-lbl" style="margin-top:14px">What to fix</div>
+    <label class="vb-check"><input type="checkbox" id="fxLight" checked onchange="vbFixUI()">Lighting &amp; exposure (relight naturally, balance faces)</label>
+    <label class="vb-check"><input type="checkbox" id="fxMatchLight" checked onchange="vbFixUI()">Match subject light to the scene (no "pasted-in" look)</label>
+    <label class="vb-check"><input type="checkbox" id="fxColor" checked onchange="vbFixUI()">White balance &amp; color grade</label>
+    <label class="vb-check"><input type="checkbox" id="fxSkin" checked onchange="vbFixUI()">Skin texture realism (kill plastic / waxy look)</label>
+    <label class="vb-check"><input type="checkbox" id="fxAnatomy" checked onchange="vbFixUI()">Hands &amp; anatomy</label>
+    <label class="vb-check"><input type="checkbox" id="fxBg" checked onchange="vbFixUI()">Background text &amp; perspective</label>
+    <label class="vb-check"><input type="checkbox" id="fxSharp" checked onchange="vbFixUI()">Sharpness &amp; noise (remove HDR halos, add grain)</label>
+    <label class="vb-check"><input type="checkbox" id="fxAiLook" checked onchange="vbFixUI()">Remove the overall "AI look"</label>
+
+    <div class="vb-lbl" style="margin-top:14px">Lighting look</div>
+    <div class="vb-fr"><select id="fxLook" onchange="vbFixUI()">
+      <option>Keep original lighting mood</option>
+      <option>Natural daylight</option>
+      <option>Soft overcast daylight</option>
+      <option>Golden hour warm light</option>
+      <option>Blue hour / dusk</option>
+      <option>Warm indoor light</option>
+      <option>Neutral studio light</option>
+      <option>Cinematic moody light</option>
+      <option>Bright sunny daylight</option>
+      <option>Overcast street daylight</option>
+      <option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="fxLookCustomWrap" style="display:none;margin-top:8px"><label>Custom lighting</label><input type="text" id="fxLookCustom" value="" placeholder="e.g. soft window light from the left, neon city glow…" oninput="vbFixUI()"></div>
+
+    <div class="vb-row" style="margin-top:14px"><label>Edit strength</label><input type="range" id="fxStrength" min="0.15" max="0.7" step="0.05" value="0.35" oninput="vbFixUI()"><span class="ro" id="fxStrengthRo">0.35 · light</span></div>
+
+    <div class="vb-grid2" style="margin-top:8px">
+      <div class="vb-fr"><label>Camera look</label><input type="text" id="fxCam" value="a full-frame DSLR with a 35mm lens in natural light" oninput="vbFixUI()"></div>
+      <div class="vb-fr"><label>Aspect ratio</label><select id="fxAspect" onchange="vbFixUI()"><option>Keep original</option><option>9:16</option><option>16:9</option><option>1:1</option><option>4:5</option><option>3:4</option></select></div>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">What looks off? <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px">(optional, very helpful)</span></div>
+    <div class="vb-fr"><textarea id="fxNotes" rows="3" placeholder="e.g. lighting is flat and grey, faces too dark, skin looks plastic, the flag and background look fake, hands are off" oninput="vbFixUI()"></textarea></div>
+
+    <div class="vb-lbl" style="margin-top:14px">Keep unchanged</div>
+    <label class="vb-check"><input type="checkbox" id="fxKeepId" checked onchange="vbFixUI()">Identities &amp; faces</label>
+    <label class="vb-check"><input type="checkbox" id="fxKeepComp" checked onchange="vbFixUI()">Composition &amp; poses</label>
+    <label class="vb-check"><input type="checkbox" id="fxKeepClothes" checked onchange="vbFixUI()">Clothing</label>
+    <label class="vb-check"><input type="checkbox" id="fxKeepBg" checked onchange="vbFixUI()">Background &amp; scene layout</label>
+  </div>
+
+  <div class="vb-card vbm m-fixer">
+    <div class="vb-st"><i class="ti ti-text-caption" style="font-size:18px" aria-hidden="true"></i> Fix prompt <button class="vb-mini" style="margin-left:auto" onclick="vbCopyId('fxTextPreview',this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button></div>
+    <div class="vb-plain" id="fxTextPreview">—</div>
+    <div class="vb-st" style="margin-top:16px"><i class="ti ti-code" style="font-size:18px" aria-hidden="true"></i> JSON spec <button class="vb-mini" style="margin-left:auto" onclick="vbCopyId('fxJsonPreview',this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button></div>
+    <div class="vb-json" id="fxJsonPreview">—</div>
+  </div>
+
+  <div class="vb-card vbm m-script m-single" id="lockCard">
+    <div class="vb-st"><i class="ti ti-lock" style="font-size:18px" aria-hidden="true"></i> Locked constraints <span class="vb-badge amber">identical every clip</span></div>
+    <div class="vb-locklist">
+      <span><i class="ti ti-check" aria-hidden="true"></i>Medium close-up, framing locked</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No camera move / zoom / pan / tilt</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Reference background preserved</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No background change / animation</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Exact face, hair, skin, clothing</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Direct eye contact to camera</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Natural blink / breath / micro-moves</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No overacting, subtle expression</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Single continuous shot, no cuts</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No transitions / effects / filters</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>No captions / subtitles / on-screen text</span>
+      <span><i class="ti ti-check" aria-hidden="true"></i>Minimal natural hand gestures</span>
+    </div>
+  </div>
+
+  <div class="vb-card vbm m-script m-single" id="videoJsonCard">
+    <div class="vb-st"><i class="ti ti-code" style="font-size:18px" aria-hidden="true"></i> JSON prompt preview <span class="vb-badge">per clip</span><button class="vb-mini" style="margin-left:auto" onclick="vbCopyAllVideo(this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy all</button></div>
+    <div id="videoJsonOut"></div>
+  </div>
+
+  
+
+  <script src="system.js"></script>
+
+</main>
+<footer class="vb-footer">2026 night</footer>
+</body>
+</html>

@@ -1,0 +1,528 @@
+/* ==========================================================================
+   PROMPT BUILDER — dark UI
+   Single coherent token system. Aliases for every variable name referenced
+   in markup/JS inline styles are mapped to real values so nothing falls back
+   to undefined.
+   ========================================================================== */
+:root {
+  /* Surfaces */
+  --color-bg-main:        #000000;
+  --color-bg-card:        #18181b;   /* gray cards */
+  --color-bg-secondary:   #1f1f23;   /* inputs, metrics, chips */
+  --color-bg-elevated:    #232328;
+
+  /* Borders */
+  --color-border-primary:   #3f3f46;
+  --color-border-secondary: #2a2a30;
+  --color-border-tertiary:  #232327;
+
+  /* Text */
+  --color-text-primary:   #f4f4f5;
+  --color-text-secondary: #a1a1aa;
+  --color-text-tertiary:  #6b6b74;
+
+  /* Accent */
+  --color-accent:         #8b83f0;
+  --color-accent-light:   #211f3a;
+  --color-accent-border:  #443e7e;
+
+  /* Badges */
+  --bg-badge-success: #0f2c24;  --text-badge-success: #6ee7c0;
+  --bg-badge-warning: #2e2206;  --text-badge-warning: #f5c463;
+  --bg-badge-pink:    #2e1320;  --text-badge-pink:    #f3aac6;
+  --bg-badge-blue:    #0c2138;  --text-badge-blue:    #8cc2f5;
+
+  /* Radii — both naming schemes used across the project */
+  --radius-sm: 6px;  --radius-md: 10px;  --radius-lg: 14px;
+  --border-radius-sm: 6px; --border-radius-md: 10px; --border-radius-lg: 14px;
+
+  /* Motion */
+  --transition-smooth: all 0.2s cubic-bezier(0.215, 0.610, 0.355, 1);
+  --transition-fast:   all 0.15s ease;
+
+  /* Type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-global: var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Aliases referenced by the original second stylesheet / JS inline styles */
+  --color-background-primary:   var(--color-bg-card);
+  --color-background-secondary: var(--color-bg-secondary);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { color-scheme: dark; }
+
+body {
+  background-color: var(--color-bg-main);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  min-height: 100vh;
+  padding: 0;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   ANIMATED BACKGROUND — slow drifting aurora over pure black
+   ========================================================================== */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  z-index: -2;
+  background:
+    radial-gradient(38vmax 38vmax at 18% 22%, rgba(120, 90, 240, 0.16), transparent 60%),
+    radial-gradient(34vmax 34vmax at 82% 30%, rgba(40, 130, 200, 0.13), transparent 60%),
+    radial-gradient(40vmax 40vmax at 50% 88%, rgba(180, 70, 150, 0.10), transparent 62%);
+  filter: blur(8px);
+  animation: vbDrift 26s ease-in-out infinite alternate;
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(120vmax 90vmax at 50% -10%, transparent 55%, rgba(0,0,0,0.55) 100%);
+  pointer-events: none;
+}
+@keyframes vbDrift {
+  0%   { transform: translate3d(0,0,0) scale(1);      }
+  50%  { transform: translate3d(2%, -2%, 0) scale(1.08); }
+  100% { transform: translate3d(-2%, 2%, 0) scale(1.04); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+}
+
+/* ==========================================================================
+   LAYOUT
+   ========================================================================== */
+.vb-wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 25px 25px 3rem;
+  columns: 430px;
+  column-gap: 20px;
+}
+/* Cards become masonry tiles; never split across a column */
+.vb-wrap > .vb-card { break-inside: avoid; -webkit-column-break-inside: avoid; }
+/* Full-width cards span every column */
+.vb-card--full { column-span: all; break-inside: avoid; }
+
+@media (max-width: 900px) {
+  .vb-wrap { columns: 1; padding: 18px 18px 2.5rem; }
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ==========================================================================
+   HEADER + MODE DROPDOWN
+   ========================================================================== */
+.vb-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 0;
+  margin-bottom: 0.75rem;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--color-border-tertiary);
+}
+.vb-header-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0.85rem 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.vb-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--color-text-primary);
+}
+.vb-brand i { font-size: 19px; color: var(--color-accent); }
+
+.vb-mode {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vb-mode > span {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+.vb-mode-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.vb-mode-select select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  padding: 9px 38px 9px 14px;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition-fast);
+}
+.vb-mode-select select:hover { border-color: var(--color-border-primary); }
+.vb-mode-select select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+.vb-mode-select::after {
+  content: "";
+  position: absolute;
+  right: 15px; top: 46%;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid var(--color-text-secondary);
+  border-bottom: 1.5px solid var(--color-text-secondary);
+  transform: translateY(-50%) rotate(45deg);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   CARDS
+   ========================================================================== */
+.vb-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  transition: var(--transition-smooth);
+}
+.vb-card:hover { border-color: var(--color-border-secondary); }
+
+.vb-st {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vb-st i { color: var(--color-text-secondary); }
+
+.vb-div {
+  border: none;
+  border-top: 1px solid var(--color-border-tertiary);
+  margin: 1.25rem 0;
+}
+
+.vb-grid2, .vb-grid3 { display: grid; gap: 12px; }
+.vb-grid2 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.vb-grid3 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+/* ==========================================================================
+   LABELS & TYPE
+   ========================================================================== */
+.vb-lbl {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+/* ==========================================================================
+   FORM ELEMENTS
+   ========================================================================== */
+.vb-fr { display: flex; flex-direction: column; gap: 6px; }
+.vb-fr label { font-size: 0.75rem; font-weight: 500; color: var(--color-text-secondary); }
+
+.vb-fr input[type="text"],
+.vb-fr textarea,
+.vb-fr select,
+.hk-line, .hk-cam-custom,
+.hk-turn select, .hk-turn input[type="text"] {
+  width: 100%;
+  font-size: 0.875rem;
+  font-family: inherit;
+  padding: 10px 13px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
+  outline: none;
+}
+.vb-fr textarea, .hk-line { resize: vertical; line-height: 1.55; }
+
+.vb-fr select, .hk-turn select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text-secondary) 50%),
+    linear-gradient(135deg, var(--color-text-secondary) 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 13px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+  cursor: pointer;
+}
+
+.vb-fr input:focus, .vb-fr textarea:focus, .vb-fr select:focus,
+.hk-line:focus, .hk-cam-custom:focus,
+.hk-turn select:focus, .hk-turn input[type="text"]:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+::placeholder { color: var(--color-text-tertiary); }
+
+/* Sliders */
+.vb-row { display: flex; align-items: center; gap: 14px; margin: 10px 0; }
+.vb-row label { font-size: 0.8125rem; color: var(--color-text-secondary); min-width: 112px; }
+.vb-row input[type="range"] {
+  flex: 1; appearance: none; -webkit-appearance: none;
+  height: 4px; border-radius: 2px;
+  background: var(--color-border-primary); outline: none;
+}
+.vb-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--color-accent); cursor: pointer; transition: var(--transition-fast);
+  border: 2px solid var(--color-bg-card);
+}
+.vb-row input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.vb-row input[type="range"]::-moz-range-thumb {
+  width: 15px; height: 15px; border-radius: 50%; background: var(--color-accent);
+  cursor: pointer; border: 2px solid var(--color-bg-card);
+}
+.vb-row .ro {
+  font-family: var(--font-mono); font-size: 0.8125rem; font-weight: 600;
+  min-width: 58px; text-align: right; color: var(--color-text-primary);
+}
+
+.vb-check {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.78rem; color: var(--color-text-secondary); margin-top: 12px; cursor: pointer;
+}
+.vb-check input { width: auto; accent-color: var(--color-accent); }
+
+/* ==========================================================================
+   CHIPS
+   ========================================================================== */
+.vb-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 2px; }
+.vb-chip {
+  font-size: 0.8125rem; font-weight: 500;
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid var(--color-border-secondary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer; transition: var(--transition-fast); user-select: none;
+}
+.vb-chip:hover { border-color: var(--color-border-primary); color: var(--color-text-primary); }
+.vb-chip.on-purple {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
+}
+
+/* ==========================================================================
+   BUTTONS — clean, minimal
+   ========================================================================== */
+.vb-send {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; font-size: 0.875rem; font-weight: 600; font-family: inherit;
+  padding: 13px; cursor: pointer;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  transition: var(--transition-fast);
+}
+.vb-send:hover { background: var(--color-bg-elevated); border-color: var(--color-text-tertiary); }
+.vb-send:active { transform: scale(0.99); }
+.vb-send.is-copied {
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+/* small ghost buttons (delete line, remove, etc.) inherit a quiet look */
+.hk-turn button {
+  font-size: 12px; padding: 7px 10px; cursor: pointer;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-secondary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  transition: var(--transition-fast);
+}
+.hk-turn button:hover { color: var(--color-text-primary); border-color: var(--color-border-primary); }
+
+/* ==========================================================================
+   METRICS, CLIPS, PREVIEWS
+   ========================================================================== */
+.vb-metric {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1rem; text-align: center;
+}
+.vb-metric .n { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); }
+.vb-metric .l { font-size: 0.72rem; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+.vb-clip {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 9px 0; border-top: 1px solid var(--color-border-tertiary);
+  font-size: 0.78rem; line-height: 1.55;
+}
+.vb-clip:first-child { border-top: none; }
+.vb-cnum {
+  flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  color: var(--text-badge-blue); background: var(--bg-badge-blue);
+  border-radius: 6px; padding: 2px 7px; min-width: 64px; text-align: center;
+}
+.vb-ctxt { color: var(--color-text-primary); }
+
+.vb-json, .vb-plain {
+  font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.6;
+  padding: 1rem 1.1rem; border-radius: var(--radius-md);
+  white-space: pre-wrap; word-break: break-word; margin-top: 10px;
+}
+.vb-json {
+  background: #0b0f0d;
+  border: 1px solid #18352c;
+  color: #7fe0bf;
+}
+.vb-plain {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-tertiary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.82rem; line-height: 1.65;
+}
+
+/* ==========================================================================
+   LOCK LISTS & BADGES
+   ========================================================================== */
+.vb-locklist {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 6px 16px; font-size: 0.75rem; color: var(--color-text-secondary); line-height: 1.5;
+}
+.vb-locklist span { display: flex; align-items: center; gap: 6px; }
+.vb-locklist i { font-size: 14px; color: var(--text-badge-success); flex-shrink: 0; }
+
+.vb-badge {
+  font-size: 0.6875rem; font-weight: 600; padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-badge-success); color: var(--text-badge-success);
+}
+.vb-badge.pink  { background: var(--bg-badge-pink);    color: var(--text-badge-pink); }
+.vb-badge.amber { background: var(--bg-badge-warning); color: var(--text-badge-warning); }
+.vb-badge.blue  { background: var(--bg-badge-blue);    color: var(--text-badge-blue); }
+
+/* ==========================================================================
+   HOOK TURNS
+   ========================================================================== */
+.hk-turn {
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--radius-md);
+  padding: 10px; margin-top: 8px;
+  background: var(--color-bg-secondary);
+}
+.hk-turn > div { display: flex; gap: 8px; align-items: center; }
+.hk-spk { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: var(--color-accent-light); color: var(--color-accent); }
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width: 560px) {
+  .vb-header { gap: 0.5rem; }
+  .vb-card { padding: 1.15rem; }
+  .vb-row label { min-width: 92px; }
+}
+
+/* ==========================================================================
+   COPY BUTTONS, PER-CLIP PREVIEWS, TOAST  (added)
+   ========================================================================== */
+.vb-mini {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; font-family: inherit;
+  padding: 5px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-secondary);
+  background: var(--color-bg-secondary); color: var(--color-text-secondary);
+  cursor: pointer; transition: var(--transition-fast); white-space: nowrap;
+}
+.vb-mini:hover { color: var(--color-text-primary); border-color: var(--color-border-primary); }
+.vb-mini.ok { color: var(--color-accent); border-color: var(--color-accent-border); background: var(--color-accent-light); }
+.vb-mini i { font-size: 13px; }
+
+.vb-prev { margin-top: 12px; }
+.vb-prev:first-child { margin-top: 0; }
+.vb-prev-head {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  color: var(--text-badge-blue); margin-bottom: 2px;
+}
+.vb-prev-head .vb-mini { margin-left: auto; }
+.vb-prev .vb-json, .vb-prev .vb-plain { margin-top: 4px; }
+
+.vb-toast {
+  position: fixed; left: 50%; bottom: 24px;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--color-bg-elevated); color: var(--color-text-primary);
+  border: 1px solid var(--color-border-primary); border-radius: var(--radius-md);
+  padding: 10px 16px; font-size: 0.8125rem; font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  opacity: 0; pointer-events: none; z-index: 50;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.vb-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-reduced-motion: reduce) { .vb-toast { transition: opacity .2s ease; } }
+
+/* ==========================================================================
+   PAGER, FOOTER, CAPPED PREVIEWS  (added)
+   ========================================================================== */
+.vb-pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.vb-pageinfo { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--color-text-secondary); }
+.vb-mini[disabled] { opacity: 0.4; cursor: not-allowed; }
+.vb-mini[disabled]:hover { color: var(--color-text-secondary); border-color: var(--color-border-secondary); }
+
+/* keep any single preview block from getting absurdly tall */
+.vb-json, .vb-plain { max-height: 380px; overflow: auto; }
+
+.vb-footer {
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  padding: 1.5rem 1rem 2.5rem;
+}
+
+/* ==========================================================================
+   HOOK TURN ROWS  (added)
+   ========================================================================== */
+.hk-turn-top { display: flex; gap: 8px; align-items: center; }
+.hk-turn-top .hk-speaker { flex: 0 0 128px; }
+.hk-turn-top .hk-cam { flex: 1; min-width: 0; }
+.hk-turn-top button { flex: 0 0 auto; }
+.hk-turn-meta { display: flex; gap: 8px; margin-top: 8px; }
+.hk-turn-meta select { flex: 1; min-width: 0; }
