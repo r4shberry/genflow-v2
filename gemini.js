@@ -57,6 +57,25 @@
       r.readAsDataURL(file);
     });
   }
+  // downscale to <=1024px and re-encode as JPEG -> smaller payloads, less quota, faster
+  function fileToScaledB64(file, maxDim) {
+    maxDim = maxDim || 1024;
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        try {
+          var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+          var cw = Math.max(1, Math.round(img.width * scale)), ch = Math.max(1, Math.round(img.height * scale));
+          var c = document.createElement('canvas'); c.width = cw; c.height = ch;
+          c.getContext('2d').drawImage(img, 0, 0, cw, ch);
+          URL.revokeObjectURL(url);
+          resolve({ b64: c.toDataURL('image/jpeg', 0.9).split(',')[1], mime: 'image/jpeg' });
+        } catch (e) { URL.revokeObjectURL(url); reject(e); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
+      img.src = url;
+    });
+  }
   function imgPart(b64, mime) { return { inline_data: { mime_type: mime || 'image/jpeg', data: b64 } }; }
   function stripFences(s) { return s.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim(); }
 
@@ -114,7 +133,7 @@
     stageInput.addEventListener('change', async function () {
       if (!stageInput.files || !stageInput.files[0]) return;
       var f = stageInput.files[0]; stageInput.value = '';
-      stagedImg = { b64: await fileToB64(f), mime: f.type || 'image/jpeg', name: f.name || 'image' };
+      var _sc = await fileToScaledB64(f); stagedImg = { b64: _sc.b64, mime: _sc.mime, name: f.name || 'image' };
       renderStaged();
     });
 
@@ -244,14 +263,14 @@
     addMsg('user', '[Attached a reference photo -> build video JSON]');
     var thinking = renderMsg('model', 'Analyzing image...');
     try {
-      var b64 = await fileToB64(file);
+      var _s = await fileToScaledB64(file), b64 = _s.b64;
       var template = (typeof vbJsonObj === 'function') ? vbJsonObj('[DIALOGUE - replace with your script line]') : { character: '', dialogue: '' };
       var instruction =
         'Analyze the attached reference photo and return ONE JSON object as a video-clip prompt.\n' +
         'Use EXACTLY this schema and keys (do not rename or drop keys):\n\n' + JSON.stringify(template, null, 2) + '\n\n' +
         'Fill "character" with a detailed physical description from the photo. Keep all lock booleans and the "rules" array exactly as given. Keep "voice" and "camera" as given. Keep "dialogue" as the placeholder. ADD one top-level key "reference_analysis" describing wardrobe, setting, lighting, framing, mood, and any products in frame.\n' +
         'Output ONLY the JSON. No markdown fences, no commentary.';
-      var out = stripFences(await apiCall([{ role: 'user', parts: [imgPart(b64, file.type), { text: instruction }] }],
+      var out = stripFences(await apiCall([{ role: 'user', parts: [imgPart(b64, 'image/jpeg'), { text: instruction }] }],
         'You are a precise vision analyst for a video-prompt builder. You only output valid JSON.'));
       thinking.textContent = out || '(no JSON returned)';
       history.push({ role: 'model', text: out }); saveHistory();
@@ -260,8 +279,8 @@
 
   /* ---------- describe-from-photo field buttons ---------- */
   function describePhoto(file) {
-    return fileToB64(file).then(function (b64) {
-      return apiCall([{ role: 'user', parts: [imgPart(b64, file.type), { text:
+    return fileToScaledB64(file).then(function (s) {
+      return apiCall([{ role: 'user', parts: [imgPart(s.b64, s.mime), { text:
         'Look at this photo of a person. Write ONE concise but vivid physical description (about 25-40 words) usable as a video character reference: approximate age, gender, ethnicity cues, face shape, hair, facial hair, skin, build, and any distinctive features. Plain text only, no preamble, no quotes.' }] }],
         'You describe people for casting/reference. Output one plain-text line only.');
     });
@@ -310,6 +329,7 @@
       '<div id="recThumbWrap" style="display:none;margin-top:8px"><img id="recThumb" alt="reference" style="max-width:140px;border-radius:10px;border:1px solid #333"></div>' +
       '<div class="vb-fr" style="margin-top:10px"><label>Person to recreate with (their reference photo)</label><button type="button" class="vb-send" id="recPersonPick" style="width:100%"><i class="ti ti-user"></i> Upload person photo</button></div>' +
       '<div id="recPersonThumbWrap" style="display:none;margin-top:8px"><img id="recPersonThumb" alt="person" style="max-width:140px;border-radius:10px;border:1px solid #333"></div>' +
+      '<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="vb-mini" id="recSwap"><i class="ti ti-arrows-exchange"></i> Swap images</button><button type="button" class="vb-mini" id="recClearPerson"><i class="ti ti-x"></i> Clear person</button></div>' +
       '<div class="vb-lbl" style="margin-top:12px">Options</div>' +
       '<label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="recOntoChar" checked> If no person photo: recreate onto my locked character (Character field)</label>' +
       '<label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="recOverlay"> Include overlay (recreate on-screen text / graphics)</label>' +
@@ -324,19 +344,33 @@
     fi.addEventListener('change', async function () {
       if (!fi.files || !fi.files[0]) return;
       var f = fi.files[0]; fi.value = '';
-      recImg = { b64: await fileToB64(f), mime: f.type || 'image/jpeg' };
+      recImg = await fileToScaledB64(f);
       card.querySelector('#recThumb').src = 'data:' + recImg.mime + ';base64,' + recImg.b64;
       card.querySelector('#recThumbWrap').style.display = 'block';
     });
     var fiP = document.createElement('input'); fiP.type = 'file'; fiP.accept = 'image/*'; fiP.style.display = 'none'; card.appendChild(fiP);
     card.querySelector('#recPersonPick').onclick = function () { fiP.click(); };
+    function showPerson() {
+      if (!recPersonImg) { card.querySelector('#recPersonThumbWrap').style.display = 'none'; return; }
+      card.querySelector('#recPersonThumb').src = 'data:' + recPersonImg.mime + ';base64,' + recPersonImg.b64;
+      card.querySelector('#recPersonThumbWrap').style.display = 'block';
+    }
+    function showScene() {
+      if (!recImg) { card.querySelector('#recThumbWrap').style.display = 'none'; return; }
+      card.querySelector('#recThumb').src = 'data:' + recImg.mime + ';base64,' + recImg.b64;
+      card.querySelector('#recThumbWrap').style.display = 'block';
+    }
     fiP.addEventListener('change', async function () {
       if (!fiP.files || !fiP.files[0]) return;
       var f = fiP.files[0]; fiP.value = '';
-      recPersonImg = { b64: await fileToB64(f), mime: f.type || 'image/jpeg' };
-      card.querySelector('#recPersonThumb').src = 'data:' + recPersonImg.mime + ';base64,' + recPersonImg.b64;
-      card.querySelector('#recPersonThumbWrap').style.display = 'block';
+      recPersonImg = await fileToScaledB64(f);
+      try { localStorage.setItem('pb_recreate_person', JSON.stringify(recPersonImg)); } catch (e) {} // remember across reloads
+      showPerson();
     });
+    // restore remembered person photo
+    try { var saved = JSON.parse(localStorage.getItem('pb_recreate_person')); if (saved && saved.b64) { recPersonImg = saved; showPerson(); } } catch (e) {}
+    card.querySelector('#recSwap').onclick = function () { var t = recImg; recImg = recPersonImg; recPersonImg = t; showScene(); showPerson(); };
+    card.querySelector('#recClearPerson').onclick = function () { recPersonImg = null; try { localStorage.removeItem('pb_recreate_person'); } catch (e) {} showPerson(); };
     card.querySelector('#recGo').onclick = recreateGo;
     card.querySelector('#recCopy').onclick = function () { navigator.clipboard && navigator.clipboard.writeText(card.querySelector('#recOut').textContent); };
     if (typeof window.vbSend === 'function') {

@@ -1,0 +1,80 @@
+/* ============================================================
+   theme-glass.css  —  animated background + grey glass cards
+   Add to index.html AFTER style.css:
+       <link rel="stylesheet" href="style.css">
+       <link rel="stylesheet" href="theme-glass.css">
+   Remove the line to revert. Pure CSS, no JS.
+   ============================================================ */
+
+/* base color sits on <html> so the animated layers can live behind <body> */
+html { background: #0b0b10; }
+body { background: transparent !important; position: relative; min-height: 100vh; }
+
+/* ---- animated aurora (slow drifting colour blobs) ---- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -25%;
+  z-index: -2;
+  background:
+    radial-gradient(38% 38% at 20% 30%, rgba(108, 92, 231, 0.45), transparent 70%),
+    radial-gradient(34% 34% at 80% 18%, rgba(59, 47, 143, 0.42), transparent 70%),
+    radial-gradient(42% 42% at 72% 80%, rgba(45, 212, 191, 0.22), transparent 70%),
+    radial-gradient(40% 40% at 25% 78%, rgba(236, 72, 153, 0.22), transparent 70%);
+  filter: blur(48px) saturate(120%);
+  animation: auroraDrift 24s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes auroraDrift {
+  0%   { transform: translate3d(0, 0, 0) scale(1)    rotate(0deg); }
+  50%  { transform: translate3d(2%, -2%, 0) scale(1.1) rotate(4deg); }
+  100% { transform: translate3d(-2%, 2%, 0) scale(1.05) rotate(-3deg); }
+}
+
+/* ---- fine glass grain over the whole page ---- */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---- grey frosted-glass cards on top ---- */
+.vb-card {
+  background: rgba(22, 22, 30, 0.62) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  backdrop-filter: blur(14px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* header gets the same frosted treatment */
+.vb-header {
+  background: rgba(16, 16, 22, 0.55) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(16px) saturate(120%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* keep inner inputs/selects from looking washed out over the glass */
+.vb-fr input, .vb-fr select, .vb-fr textarea,
+.vb-row input, textarea, select {
+  background: rgba(8, 8, 14, 0.6) !important;
+}
+
+/* ---- perf + accessibility ---- */
+@media (max-width: 640px) {
+  .vb-card, .vb-header { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  body::before { filter: blur(36px) saturate(115%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+}
+/* graceful fallback: if backdrop-filter isn't supported, cards just stay solid grey */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vb-card { background: rgba(22, 22, 30, 0.92) !important; }
+  .vb-header { background: rgba(16, 16, 22, 0.92) !important; }
+}
