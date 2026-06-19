@@ -7,8 +7,8 @@
    Paste your two values from Supabase -> Settings -> API.
    The anon/public key is safe here (protected by RLS).
    ============================================================ */
-window.SB_URL = 'https://YOUR-PROJECT.supabase.co';
-window.SB_KEY = 'YOUR-ANON-PUBLIC-KEY';
+window.SB_URL = 'https://zisgeftdyvewbtyokhrm.supabase.co';
+window.SB_KEY = 'sb_publishable_hE5szHOuV2yzDqVZb7uPxg_OhSe6...';
 
 window.sbClient = (window.supabase && window.SB_URL.indexOf('YOUR-PROJECT') === -1)
   ? window.supabase.createClient(window.SB_URL, window.SB_KEY)
