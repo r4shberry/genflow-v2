@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in · Prompt Builder</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont/dist/tabler-icons.min.css">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: system-ui, sans-serif; color: #eee;
+    background: radial-gradient(1200px 600px at 50% -10%, #2a2360 0%, #0e0e13 60%), #0e0e13;
+  }
+  .card {
+    width: 360px; max-width: 92vw; background: #15151b; border: 1px solid #2a2a33;
+    border-radius: 16px; padding: 26px 24px; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; margin-bottom: 4px; }
+  .brand i { color: #a99bff; }
+  .sub { color: #9a9aa6; font-size: 13px; margin-bottom: 18px; }
+  label { display: block; font-size: 12px; color: #9a9aa6; margin: 12px 0 4px; }
+  input {
+    width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid #3a3a44;
+    background: #0e0e13; color: #eee; font-size: 14px;
+  }
+  input:focus { outline: none; border-color: #6c5ce7; }
+  .row { display: flex; gap: 8px; margin-top: 18px; }
+  button {
+    flex: 1; padding: 11px; border: none; border-radius: 10px; cursor: pointer;
+    font-size: 14px; font-weight: 600;
+  }
+  .primary { background: linear-gradient(135deg, #6c5ce7, #3b2f8f); color: #fff; }
+  .ghost { background: #1d1d25; color: #eee; border: 1px solid #3a3a44; }
+  .status { margin-top: 14px; font-size: 13px; color: #9a9aa6; min-height: 18px; }
+  .err { color: #ff8a8a; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><i class="ti ti-wand"></i> Prompt Builder</div>
+    <div class="sub">Sign in to sync your settings across devices.</div>
+
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
+
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="min 6 characters">
+
+    <div class="row">
+      <button class="primary" id="loginBtn">Log in</button>
+      <button class="ghost" id="signupBtn">Sign up</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script>
+    var sb = window.sbClient;
+    var statusEl = document.getElementById('status');
+    function setStatus(t, isErr) { statusEl.textContent = t || ''; statusEl.className = 'status' + (isErr ? ' err' : ''); }
+
+    if (!sb) {
+      setStatus('Supabase not configured — edit supabase-config.js', true);
+    } else {
+      // already signed in? go straight to the app
+      sb.auth.getSession().then(function (r) { if (r.data.session) location.replace('index.html'); });
+    }
+
+    function go() { location.replace('index.html'); }
+
+    document.getElementById('loginBtn').onclick = async function () {
+      if (!sb) return;
+      setStatus('Logging in...');
+      var r = await sb.auth.signInWithPassword({
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('pw').value
+      });
+      if (r.error) return setStatus(r.error.message, true);
+      go();
+    };
+
+    document.getElementById('signupBtn').onclick = async function () {
+      if (!sb) return;
+      setStatus('Creating account...');
+      var r = await sb.auth.signUp({
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('pw').value
+      });
+      if (r.error) return setStatus(r.error.message, true);
+      if (r.data.session) go();                 // email confirmation OFF -> instant
+      else setStatus('Account created. Check your email to confirm, then log in.');
+    };
+
+    // Enter key submits login
+    document.getElementById('pw').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') document.getElementById('loginBtn').click();
+    });
+  </script>
+</body>
+</html>

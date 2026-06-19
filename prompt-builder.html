@@ -552,6 +552,7 @@ body::after {
           <option value="single">Clip</option>
           <option value="hook">Hook</option>
           <option value="image">Image</option>
+          <option value="fixer">Image Fixer</option>
           <option value="product">Product</option>
         </select>
       </div>
@@ -941,6 +942,60 @@ body::after {
     <div class="vb-plain" id="pdTextPreview">—</div>
   </div>
   <!-- ============ END PRODUCT HOLD ============ -->
+
+  <div class="vb-card vbm m-fixer">
+    <div class="vb-st"><i class="ti ti-sparkles" style="font-size:18px" aria-hidden="true"></i> Image Fixer <span class="vb-badge amber">realism / lighting pass</span></div>
+    <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:4px">Paste this into an image-edit / img2img model with your generated image. It keeps the content identical and repairs the realism — lighting, color, skin and the "AI look."</div>
+
+    <div class="vb-lbl" style="margin-top:14px">What to fix</div>
+    <label class="vb-check"><input type="checkbox" id="fxLight" checked onchange="vbFixUI()">Lighting &amp; exposure (relight naturally, balance faces)</label>
+    <label class="vb-check"><input type="checkbox" id="fxMatchLight" checked onchange="vbFixUI()">Match subject light to the scene (no "pasted-in" look)</label>
+    <label class="vb-check"><input type="checkbox" id="fxColor" checked onchange="vbFixUI()">White balance &amp; color grade</label>
+    <label class="vb-check"><input type="checkbox" id="fxSkin" checked onchange="vbFixUI()">Skin texture realism (kill plastic / waxy look)</label>
+    <label class="vb-check"><input type="checkbox" id="fxAnatomy" checked onchange="vbFixUI()">Hands &amp; anatomy</label>
+    <label class="vb-check"><input type="checkbox" id="fxBg" checked onchange="vbFixUI()">Background text &amp; perspective</label>
+    <label class="vb-check"><input type="checkbox" id="fxSharp" checked onchange="vbFixUI()">Sharpness &amp; noise (remove HDR halos, add grain)</label>
+    <label class="vb-check"><input type="checkbox" id="fxAiLook" checked onchange="vbFixUI()">Remove the overall "AI look"</label>
+
+    <div class="vb-lbl" style="margin-top:14px">Lighting look</div>
+    <div class="vb-fr"><select id="fxLook" onchange="vbFixUI()">
+      <option>Keep original lighting mood</option>
+      <option>Natural daylight</option>
+      <option>Soft overcast daylight</option>
+      <option>Golden hour warm light</option>
+      <option>Blue hour / dusk</option>
+      <option>Warm indoor light</option>
+      <option>Neutral studio light</option>
+      <option>Cinematic moody light</option>
+      <option>Bright sunny daylight</option>
+      <option>Overcast street daylight</option>
+      <option>Custom…</option>
+    </select></div>
+    <div class="vb-fr" id="fxLookCustomWrap" style="display:none;margin-top:8px"><label>Custom lighting</label><input type="text" id="fxLookCustom" value="" placeholder="e.g. soft window light from the left, neon city glow…" oninput="vbFixUI()"></div>
+
+    <div class="vb-row" style="margin-top:14px"><label>Edit strength</label><input type="range" id="fxStrength" min="0.15" max="0.7" step="0.05" value="0.35" oninput="vbFixUI()"><span class="ro" id="fxStrengthRo">0.35 · light</span></div>
+
+    <div class="vb-grid2" style="margin-top:8px">
+      <div class="vb-fr"><label>Camera look</label><input type="text" id="fxCam" value="a full-frame DSLR with a 35mm lens in natural light" oninput="vbFixUI()"></div>
+      <div class="vb-fr"><label>Aspect ratio</label><select id="fxAspect" onchange="vbFixUI()"><option>Keep original</option><option>9:16</option><option>16:9</option><option>1:1</option><option>4:5</option><option>3:4</option></select></div>
+    </div>
+
+    <div class="vb-lbl" style="margin-top:14px">What looks off? <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px">(optional, very helpful)</span></div>
+    <div class="vb-fr"><textarea id="fxNotes" rows="3" placeholder="e.g. lighting is flat and grey, faces too dark, skin looks plastic, the flag and background look fake, hands are off" oninput="vbFixUI()"></textarea></div>
+
+    <div class="vb-lbl" style="margin-top:14px">Keep unchanged</div>
+    <label class="vb-check"><input type="checkbox" id="fxKeepId" checked onchange="vbFixUI()">Identities &amp; faces</label>
+    <label class="vb-check"><input type="checkbox" id="fxKeepComp" checked onchange="vbFixUI()">Composition &amp; poses</label>
+    <label class="vb-check"><input type="checkbox" id="fxKeepClothes" checked onchange="vbFixUI()">Clothing</label>
+    <label class="vb-check"><input type="checkbox" id="fxKeepBg" checked onchange="vbFixUI()">Background &amp; scene layout</label>
+  </div>
+
+  <div class="vb-card vbm m-fixer">
+    <div class="vb-st"><i class="ti ti-text-caption" style="font-size:18px" aria-hidden="true"></i> Fix prompt <button class="vb-mini" style="margin-left:auto" onclick="vbCopyId('fxTextPreview',this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button></div>
+    <div class="vb-plain" id="fxTextPreview">—</div>
+    <div class="vb-st" style="margin-top:16px"><i class="ti ti-code" style="font-size:18px" aria-hidden="true"></i> JSON spec <button class="vb-mini" style="margin-left:auto" onclick="vbCopyId('fxJsonPreview',this)"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button></div>
+    <div class="vb-json" id="fxJsonPreview">—</div>
+  </div>
 
   <div class="vb-card vbm m-script m-single" id="lockCard">
     <div class="vb-st"><i class="ti ti-lock" style="font-size:18px" aria-hidden="true"></i> Locked constraints <span class="vb-badge amber">identical every clip</span></div>
@@ -1383,6 +1438,68 @@ function vbProductUI(){
 }
 /* ============ END PRODUCT HOLD ============ */
 
+/* ============ IMAGE FIXER (realism / lighting pass) ============ */
+function vbFxOn(id){var e=document.getElementById(id);return e?e.checked:false;}
+function vbFixWord(){var s=+vbG('fxStrength')||0.35;if(s<=0.25)return 'very light';if(s<=0.4)return 'light';if(s<=0.55)return 'moderate';return 'strong';}
+function vbFixText(){
+  var notes=(vbG('fxNotes')||'').replace(/\s+/g,' ').trim();
+  var cam=vbG('fxCam')||'a full-frame DSLR with a 35mm lens in natural light';
+  var aspect=vbG('fxAspect')||'Keep original';
+  var word=vbFixWord();
+  var look=vbG('fxLook'),lookClause='';
+  if(look==='Custom…'){var lc=vbG('fxLookCustom').trim();if(lc)lookClause='Relight the scene as '+lc+'. ';}
+  else if(look&&look!=='Keep original lighting mood'){lookClause='Relight the scene with '+look.toLowerCase()+'. ';}
+
+  var keep=[];
+  if(vbFxOn('fxKeepId'))keep.push('the same people and their exact facial identities');
+  if(vbFxOn('fxKeepComp'))keep.push('the same poses, positions, composition and framing');
+  if(vbFxOn('fxKeepClothes'))keep.push('the same clothing');
+  if(vbFxOn('fxKeepBg'))keep.push('the same background and scene layout');
+  var preserve=keep.length?('Preserve exactly: '+keep.join(', ')+'. Do not move, add, or remove anyone or anything. '):'';
+
+  var fixes=[];
+  if(vbFxOn('fxLight'))fixes.push('Lighting: relight with natural, physically consistent lighting from a single coherent direction, and balance the exposure so faces are properly lit with recovered shadow and highlight detail');
+  if(vbFxOn('fxMatchLight'))fixes.push('Match the light, color temperature and shadows on every subject to the surrounding environment so no one looks pasted-in or composited');
+  if(vbFxOn('fxColor'))fixes.push('White balance and color: correct the white balance to neutral, apply a natural color grade, and reduce oversaturation and color casts');
+  if(vbFxOn('fxSkin'))fixes.push('Skin and texture: restore authentic skin texture with real pores and fine detail, remove plastic AI smoothness and waxy highlights, and keep natural skin tones');
+  if(vbFxOn('fxAnatomy'))fixes.push('Anatomy: correct any deformed hands, fingers, ears, teeth or asymmetric eyes');
+  if(vbFxOn('fxBg'))fixes.push('Background: fix warped or unreadable text and signage and keep architecture and perspective coherent');
+  if(vbFxOn('fxSharp'))fixes.push('Sharpness and noise: remove over-sharpening halos and HDR over-processing, add subtle natural film grain, and remove color banding');
+  if(vbFxOn('fxAiLook'))fixes.push('Remove the AI look: kill the uncanny gloss, over-smooth rendering and over-processed HDR so it reads as a real candid photograph');
+  var fixText=fixes.length?('Fix the realism — '+fixes.join('; ')+'. '):'';
+
+  return 'Edit the provided image to look like a real, natural photograph while keeping the content identical. '
+    +preserve+fixText+lookClause
+    +'Make it look like it was shot on '+cam+', with realistic dynamic range, true-to-life colors, natural shadows and highlights, and authentic photographic depth. The result must read as a genuine photograph, not AI-generated artwork. '
+    +(notes?('Specifically address: '+notes+'. '):'')
+    +'Apply only a '+word+' edit — change as little as needed to fix the realism without altering identities, composition or content. '
+    +(aspect!=='Keep original'?('Output aspect ratio '+aspect+'. '):'Keep the original aspect ratio and resolution. ')
+    +'Avoid: cartoon, illustration, 3d render, cgi, plastic skin, waxy highlights, oversaturation, HDR halos, blown highlights, crushed blacks, deformed hands, extra fingers, warped or misspelled text, duplicated elements, changed faces, changed composition, beauty-filter smoothing.';
+}
+function vbFixJsonObj(){
+  var look=vbG('fxLook');if(look==='Custom…')look=vbG('fxLookCustom').trim()||'custom';
+  return {
+    task:'photorealism_fix',
+    mode:'img2img edit — preserve content, repair realism',
+    edit_strength:+(+vbG('fxStrength')||0.35).toFixed(2),
+    preserve:{identities:vbFxOn('fxKeepId'),composition_and_pose:vbFxOn('fxKeepComp'),clothing:vbFxOn('fxKeepClothes'),background_layout:vbFxOn('fxKeepBg')},
+    fix:{lighting_and_exposure:vbFxOn('fxLight'),match_subject_light_to_scene:vbFxOn('fxMatchLight'),white_balance_and_color:vbFxOn('fxColor'),skin_texture_realism:vbFxOn('fxSkin'),hands_and_anatomy:vbFxOn('fxAnatomy'),background_text_and_perspective:vbFxOn('fxBg'),sharpness_and_noise:vbFxOn('fxSharp'),remove_ai_look:vbFxOn('fxAiLook')},
+    lighting_look: look||'keep original',
+    camera_look: vbG('fxCam')||'full-frame DSLR, 35mm, natural light',
+    notes: (vbG('fxNotes')||'').replace(/\s+/g,' ').trim(),
+    aspect_ratio: vbG('fxAspect')||'Keep original',
+    negative_prompt:'cartoon, illustration, 3d render, cgi, plastic skin, waxy highlights, oversaturation, hdr halos, blown highlights, crushed blacks, deformed hands, extra fingers, warped text, duplicated elements, changed faces, changed composition, beauty filter, over-smoothing, banding',
+    instruction: vbFixText()
+  };
+}
+function vbFixUI(){
+  var lc=document.getElementById('fxLookCustomWrap');if(lc)lc.style.display=(vbG('fxLook')==='Custom…')?'flex':'none';
+  var ro=document.getElementById('fxStrengthRo');if(ro)ro.textContent=(+vbG('fxStrength')||0.35).toFixed(2)+' · '+vbFixWord();
+  var tp=document.getElementById('fxTextPreview');if(tp)tp.textContent=vbFixText();
+  var jp=document.getElementById('fxJsonPreview');if(jp)jp.textContent=JSON.stringify(vbFixJsonObj(),null,2);
+}
+/* ============ END IMAGE FIXER ============ */
+
 function vbComputeClips(){
   var text=vbG('scriptText').replace(/\s+/g,' ').trim();
   var pace=+vbG('pace')||2.7, secs=+vbG('secs')||8;
@@ -1561,7 +1678,7 @@ function vbApply(data){
     }
   }
   vbSetMode(data.mode||'script');
-  vbAllToggles();vbSeg();vbImgUI();vbHookUI();vbProductUI();vbJsonUI();
+  vbAllToggles();vbSeg();vbImgUI();vbHookUI();vbProductUI();vbFixUI();vbJsonUI();
 }
 function vbAllToggles(){
   vbBgToggle();vbWardrobeToggle();vbShotToggle();vbPoseToggle();vbActivityToggle();vbCompToggle();
@@ -1587,7 +1704,7 @@ vbHookAddTurn('B','Focus on the speaker','Wait, so brushing alone isn\'t enough?
 vbHookAddTurn('A','Over-the-shoulder toward the speaker','Exactly. Mek mi show yuh di one ting weh change everyting.','Confident','Leaning in, interested');
 vbHookAddTurn('B','Two-shot (both in frame)','Okay, I\'m listening — show me.','Excited','Nodding in agreement');
 vbPdPreset('crwn',document.querySelector('#pdProductChips .vb-chip[data-k="crwn"]'));
-vbAllToggles();vbSeg();vbImgUI();vbHookUI();vbProductUI();vbJsonUI();
+vbAllToggles();vbSeg();vbImgUI();vbHookUI();vbProductUI();vbFixUI();vbJsonUI();
 vbSetMode((document.getElementById('modeSelect')||{}).value||'script');
 vbLoad();
 vbReady=true;
